@@ -33,6 +33,8 @@ topics:
     children:
       - id: icode_run
         path: guides/running/icode-run.md
+      - id: evalhub
+        path: guides/running/evalhub.md
       - id: icode_acp
         path: guides/running/icode-acp.md
       - id: icode_serve

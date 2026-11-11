@@ -1,0 +1,10 @@
+extend = "../../pyproject.toml"
+
+[lint.per-file-ignores]
+# These scripts launch explicit Git/CLI commands and print CLI diagnostics.
+"r5_native.py" = ["S603", "S607", "T201"]
+"sandbox_agent.py" = ["S603", "S607", "T201"]
+# Offline fixtures use synthetic credentials, subprocesses and assertions.
+"test_*.py" = ["S", "T201"]
+"smoke_*.py" = ["S", "T201", "ASYNC221"]
+"offline_*.py" = ["S", "T201"]
