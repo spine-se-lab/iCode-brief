@@ -49,7 +49,6 @@ _IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"`([^`\n]{1,60})`")
 _MAX_KEPT_IDENTIFIER_CHARS: Final[int] = 160
 _REQUIREMENT_LABEL_CHARS: Final[int] = 80
 _CLAIM_TEXT_CHARS: Final[int] = 160
-_FULL_CHARS: Final[int] = 1_000_000  # V1.9: full text until the budget forces the old step-downs
 _REQUIREMENT_CONFLICTS_SHOWN: Final[int] = 3
 
 
@@ -108,7 +107,7 @@ def render_active_brief_with_actions(
     while True:
         reference = _reference_contract(snapshot, goal, budget=canonical_budget * 2 // 5) if canonical_budget >= 1400 else ""
         focus = (
-            _verification_focus(snapshot, goal, evidence, budget=canonical_budget // 3)
+            _verification_focus(snapshot, goal, evidence, budget=min(650, canonical_budget // 3))
             if canonical_budget >= 1400 else ""
         )
         brief, actions = _render_canonical_brief(
@@ -280,8 +279,8 @@ def _render_canonical_brief(
     claim_limit = len(shown)
     priority_claims = [item for item in shown if _priority_claim(item)]
     claim_floor = min(3, len(priority_claims))
-    requirement_chars = _FULL_CHARS
-    tension_chars = _FULL_CHARS
+    requirement_chars = _REQUIREMENT_LABEL_CHARS
+    tension_chars = 180
 
     def _render(claims: int) -> str:
         return _render_brief(
@@ -308,11 +307,11 @@ def _render_canonical_brief(
         claim_limit -= 1
         brief = _render(claim_limit)
     while len(brief) > budget and requirement_chars > 64:
-        requirement_chars = max(64, min(requirement_chars, _REQUIREMENT_LABEL_CHARS) - 16)
+        requirement_chars = max(64, requirement_chars - 16)
         actions.append(f"requirement_chars_{requirement_chars}")
         brief = _render(claim_limit)
     while len(brief) > budget and tension_chars > 48:
-        tension_chars = max(48, min(tension_chars, 180) - 16)
+        tension_chars = max(48, tension_chars - 16)
         actions.append(f"tension_chars_{tension_chars}")
         brief = _render(claim_limit)
     if len(brief) > budget:
@@ -442,7 +441,7 @@ def _render_brief(
 
     lines.extend(("", f"Claims ({len(active)} active, {len(visible_claims)} shown):"))
     if visible_claims:
-        lines.extend(_claim_line(item, statement_chars=_FULL_CHARS) for item in visible_claims)
+        lines.extend(_claim_line(item, statement_chars=_CLAIM_TEXT_CHARS) for item in visible_claims)
         if len(shown) > len(visible_claims):
             lines.append(f"- +{len(shown) - len(visible_claims)} more (inspect_compass_brief([]))")
     elif active:

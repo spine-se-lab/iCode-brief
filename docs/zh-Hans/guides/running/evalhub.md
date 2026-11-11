@@ -1,4 +1,4 @@
-# 在 EvalHub 运行 Compass v1.9 + iCode
+# 在 EvalHub 运行 Compass v1.4.2 + iCode
 
 上传仓库里的 `integrations/evalhub/r5_icode_evalhub.py`，Agent 类为 `R5ICodeAgent`。
 这个文件包含启动和日志收集代码。任务启动后，脚本在任务沙箱中克隆本仓库的指定分支，安装锁定依赖，再启动 iCode。
@@ -12,7 +12,7 @@
 Agent 参数填写以下 JSON。
 
 ```json
-{"repo_ref": "codex/compass-v1.9-evalhub"}
+{"repo_ref": "codex/compass-v1.4.2-evalhub"}
 ```
 
 默认就是这个分支。每次新任务读取该分支当时的 HEAD，实际提交号保存在 `source-identity.json`。
@@ -23,7 +23,7 @@ Agent 参数填写以下 JSON。
 
 1. 在 `/logs/agent` 下创建本次任务独立目录，通过 `git clone --depth 1 --single-branch --branch ...` 获取源码。
 2. 建立独立 Python 3.14.0 环境，执行 `uv sync --frozen --no-dev --no-default-groups`，使用仓库的 `uv.lock`。
-3. 校验 Compass v1.9 的全部 72 个原始文件，开始 iCode 的源码探索、Compass 交接和 Brief 投递。
+3. 校验 Compass v1.4.2 的全部 72 个原始文件，开始 iCode 的源码探索、Compass 交接和 Brief 投递。
 4. iCode 在任务工作目录修改代码并执行检查。结束时导出包含已提交修改和未提交修改的补丁，交给平台现有验收流程。
 
 沙箱需要 Git 和 Python 3。uv 缺少时，脚本通过当前配置的 pip 软件源安装 uv。其后 Python 运行时和依赖下载遵循 uv 的下载及软件源配置，源码下载需要访问 GitHub。依赖装在本次任务目录内。
@@ -34,9 +34,9 @@ Agent 参数填写以下 JSON。
 | 项目 | 设置 |
 |---|---|
 | iCode 基线 | 0.34.0，`ffdc67ed74c1c2d78d16ab4b8544fed8d9ee3c69` |
-| Compass | 用户提供的封存 v1.9，72 个原始文件逐字节保留 |
-| 原始 Compass 包 SHA256 | `032bd720722e99ea3c783a8844aa15fac31e5c612203e18f1060c423e3923ac7` |
-| Brief 预算 | 15,000 字符，采用 v1.9 原始全文渲染和超预算处理 |
+| Compass | 用户提供的封存 v1.4.2，72 个原始文件逐字节保留 |
+| 原始 Compass 包 SHA256 | `2866727c047a5bd4746f6d25b0ad64ebc717332b07f9842e3be607c98c95291e` |
+| Brief 预算 | 6,000 字符，采用 v1.4.2 原始渲染逻辑 |
 | 主模型输出上限 | 64,000 token |
 | 主模型思考参数 | `reasoning_effort=max`，`thinking.type=enabled` |
 | 主模型调用预算 | 250 次，生成时限 11,400 秒 |

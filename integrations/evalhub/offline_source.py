@@ -16,7 +16,7 @@ def prepare_source(destination):
             "--depth",
             "1",
             "--branch",
-            "codex/compass-v1.9-evalhub",
+            "codex/compass-v1.4.2-evalhub",
             ROOT.as_uri(),
             str(destination),
         ],

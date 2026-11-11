@@ -97,7 +97,7 @@ async def main():
                     "cancelled_maintenance_attempts": 2,
                     "external_model_calls": 0,
                 }
-                (ROOT / "native-smoke-timeout-v19.json").write_text(json.dumps(result, indent=2) + "\n")
+                (ROOT / "native-smoke-timeout-v142.json").write_text(json.dumps(result, indent=2) + "\n")
                 print(json.dumps(result))
                 return
             # All credentials and model responses in this test are synthetic.
@@ -124,7 +124,7 @@ async def main():
         result = {
             "passed": True,
             "real_icode_cli": True,
-            "compass_v19": True,
+            "compass_v142": True,
             "dependencies_installed_during_setup": solver.runtime_python is None,
             "synthetic_main_responses": counts["main"],
             "synthetic_maintenance_attempts": counts["maintenance"],
@@ -137,7 +137,7 @@ async def main():
             "context": vars(context),
         }
         print(json.dumps(result))
-        (ROOT / ("native-smoke-" + mode + "-v19.json")).write_text(json.dumps(result, indent=2) + "\n")
+        (ROOT / ("native-smoke-" + mode + "-v142.json")).write_text(json.dumps(result, indent=2) + "\n")
 
 
 if __name__ == "__main__":

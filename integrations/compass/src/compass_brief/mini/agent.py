@@ -371,7 +371,7 @@ class CompassMiniAgentConfig(InteractiveAgentConfig):
     """Trial directory for Compass artifacts. Unset keeps the session in memory."""
     compass_maintenance_interval: int = 24
     """Evidence records between automatic Maintenance calls, not model turns."""
-    compass_brief_budget_chars: int = 15000
+    compass_brief_budget_chars: int = 6000
     compass_maintenance_model: str = ""
     """Model id for the Maintenance call. Unset reuses mini's model; ``none`` disables it."""
     compass_maintenance_response_format: Literal["json_schema", "json_object"] = "json_schema"

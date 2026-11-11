@@ -400,10 +400,10 @@ class Checks(unittest.IsolatedAsyncioTestCase):
         ):
             helper.require_gateway()
 
-    def test_v19_source_and_upload_identity(self):
+    def test_v142_source_and_upload_identity(self):
         root = ROOT.parent / "compass"
         manifest = json.loads((root / "SOURCE-MANIFEST.json").read_text())
-        self.assertEqual(manifest["version"], "1.9")
+        self.assertEqual(manifest["version"], "1.4.2")
         self.assertEqual(manifest["original_archive_sha256"], agent.R5_ARCHIVE)
         self.assertEqual(len(manifest["files_sha256"]), 72)
         for name, expected in manifest["files_sha256"].items():
@@ -412,7 +412,7 @@ class Checks(unittest.IsolatedAsyncioTestCase):
         self.assertLess(len(source.encode()), 1_000_000)
         self.assertNotIn("RUNTIME_B64", source)
         self.assertNotIn("pip install iCode", source)
-        self.assertEqual(agent.REPO_REF, "codex/compass-v1.9-evalhub")
+        self.assertEqual(agent.REPO_REF, "codex/compass-v1.4.2-evalhub")
         self.assertIn(
             "--frozen",
             {
@@ -421,7 +421,7 @@ class Checks(unittest.IsolatedAsyncioTestCase):
                 if isinstance(node, ast.Constant) and isinstance(node.value, str)
             },
         )
-        self.assertIn("brief_budget_chars=15000", (root / "src/compass_brief/session.py").read_text())
+        self.assertIn("brief_budget_chars=6000", (root / "src/compass_brief/session.py").read_text())
 
     async def test_branch_commit_mismatch_stops_before_runtime_install(self):
         source = self.root / "source"

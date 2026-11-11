@@ -1,4 +1,4 @@
-"""iCode 0.34 adapter for the frozen Compass v1.9 core.
+"""iCode 0.34 adapter for the frozen Compass v1.4.2 core.
 
 One process owns one trial. This is not an installer for shared iCode profiles.
 """
@@ -33,7 +33,7 @@ from chrys.foundation.tool_result_metadata import (
 from chrys.kernel.middleware import ChatMiddleware, FunctionMiddleware
 
 UPSTREAM = "ffdc67ed74c1c2d78d16ab4b8544fed8d9ee3c69"
-ARCHIVE = "032bd720722e99ea3c783a8844aa15fac31e5c612203e18f1060c423e3923ac7"
+ARCHIVE = "2866727c047a5bd4746f6d25b0ad64ebc717332b07f9842e3be607c98c95291e"
 BASE_URL = "https://api.deepseek.com"
 MODEL = "deepseek-flash"
 MODEL_PROFILE = "dee05ee03400"
@@ -112,13 +112,13 @@ def frozen_constants(root):
     manifest = json.loads((root / "SOURCE-MANIFEST.json").read_text())
     if (
         manifest["original_archive_sha256"] != ARCHIVE
-        or manifest.get("version") != "1.9"
+        or manifest.get("version") != "1.4.2"
         or len(manifest["files_sha256"]) != 72
     ):
-        raise RuntimeError("Unexpected Compass v1.9 manifest")
+        raise RuntimeError("Unexpected Compass v1.4.2 manifest")
     for name, digest in manifest["files_sha256"].items():
         if hashlib.sha256((root / name).read_bytes()).hexdigest() != digest:
-            raise RuntimeError("Frozen Compass v1.9 mismatch: " + name)
+            raise RuntimeError("Frozen Compass v1.4.2 mismatch: " + name)
     import compass_brief.session as core
 
     if Path(core.__file__).resolve() != root / "src/compass_brief/session.py":

@@ -25,7 +25,7 @@ async def send(client, request, **kwargs):
             )
         if mode == "timeout":
             assert step <= 2, "Main model continued after a terminal handoff failure"
-        assert r.controller.core._brief_budget_chars == 15000
+        assert r.controller.core._brief_budget_chars == 6000
         assert body["thinking"] == {"type": "enabled"}
         assert body["reasoning_effort"] == "max"
         assert body.get("max_tokens") == 64000
