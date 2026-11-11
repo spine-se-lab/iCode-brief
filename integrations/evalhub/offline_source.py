@@ -8,16 +8,28 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def prepare_source(destination):
-    destination.mkdir()
-    for name in ("src", "integrations"):
-        shutil.copytree(ROOT / name, destination / name, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    for name in ("pyproject.toml", "uv.lock", ".python-version"):
-        shutil.copyfile(ROOT / name, destination / name)
-    subprocess.run(["git", "init", "-q", "-b", "codex/compass-v1.9-evalhub", str(destination)], check=True)
     subprocess.run(
-        ["git", "-C", str(destination), "add", "src", "integrations", "pyproject.toml", "uv.lock", ".python-version"],
+        [
+            "git",
+            "clone",
+            "--quiet",
+            "--depth",
+            "1",
+            "--branch",
+            "codex/compass-v1.9-evalhub",
+            ROOT.as_uri(),
+            str(destination),
+        ],
         check=True,
     )
+    for name in ("src", "integrations"):
+        shutil.copytree(
+            ROOT / name,
+            destination / name,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        )
+    subprocess.run(["git", "-C", str(destination), "add", "src", "integrations"], check=True)
     subprocess.run(
         [
             "git",
@@ -30,6 +42,7 @@ def prepare_source(destination):
             "-c",
             "commit.gpgsign=false",
             "commit",
+            "--allow-empty",
             "-qm",
             "offline source fixture",
         ],

@@ -55,9 +55,10 @@ async def main():
         try:
             await solver.setup(environment)
         except BaseException:
-            verification = root / "logs/source-verification.log"
-            if verification.exists():
-                print(verification.read_text()[-3000:])
+            for name in ("runtime-setup.log", "source-verification.log"):
+                verification = root / "logs" / name
+                if verification.exists():
+                    print(verification.read_text()[-3000:])
             raise
         runtime = solver.runtime / "integrations/evalhub"
         original = runtime / "runtime_bridge.py"
