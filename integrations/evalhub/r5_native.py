@@ -1,4 +1,4 @@
-"""iCode 0.34 adapter for the frozen Compass v1.9 core.
+"""iCode 0.34 adapter for the frozen Compass v1.15 core.
 
 One process owns one trial. This is not an installer for shared iCode profiles.
 """
@@ -21,6 +21,7 @@ from compass_brief.briefing.render import CONFLICT_REVIEW_GUIDANCE, requirement_
 from compass_brief.evidence.observation import ToolObservation
 from compass_brief.ports import ModelReply
 from compass_brief.session import CompassSession
+from compass_brief.task_contract.extraction import requirement_entries
 
 from chrys.extensions import Extension, ToolContext
 from chrys.foundation.platform.files import atomic_write_owner_only_text, secure_open_owner_verified_binary
@@ -33,7 +34,7 @@ from chrys.foundation.tool_result_metadata import (
 from chrys.kernel.middleware import ChatMiddleware, FunctionMiddleware
 
 UPSTREAM = "ffdc67ed74c1c2d78d16ab4b8544fed8d9ee3c69"
-ARCHIVE = "032bd720722e99ea3c783a8844aa15fac31e5c612203e18f1060c423e3923ac7"
+ARCHIVE = "3bc92bf4243046adddc3723b84d2dbc39eb928e6b6df60e36ab0b171b6d2b628"
 BASE_URL = "https://api.deepseek.com"
 MODEL = "deepseek-flash"
 MODEL_PROFILE = "dee05ee03400"
@@ -112,13 +113,13 @@ def frozen_constants(root):
     manifest = json.loads((root / "SOURCE-MANIFEST.json").read_text())
     if (
         manifest["original_archive_sha256"] != ARCHIVE
-        or manifest.get("version") != "1.9"
+        or manifest.get("version") != "1.15"
         or len(manifest["files_sha256"]) != 72
     ):
-        raise RuntimeError("Unexpected Compass v1.9 manifest")
+        raise RuntimeError("Unexpected Compass v1.15 manifest")
     for name, digest in manifest["files_sha256"].items():
         if hashlib.sha256((root / name).read_bytes()).hexdigest() != digest:
-            raise RuntimeError("Frozen Compass v1.9 mismatch: " + name)
+            raise RuntimeError("Frozen Compass v1.15 mismatch: " + name)
     import compass_brief.session as core
 
     if Path(core.__file__).resolve() != root / "src/compass_brief/session.py":
@@ -560,10 +561,24 @@ def install_runtime(owner):
                 if owner.started and not owner.check_done:
                     owner.check_done = True
                     held = MAX_CALLS - owner.calls >= 15 and owner.remaining() > 0
-                    prompt = owner.constants["SUBMISSION_CHECK"] + (
-                        "\nWithin the remaining budget, check/fix or explain unresolved items, then submit again."
-                        if held
-                        else "\nInsufficient remaining budget for a held check: accepting this submission immediately."
+                    live = [
+                        (rid, " ".join(text.split()))
+                        for rid, text in requirement_entries(owner.core.goals.snapshot())
+                        if not text.startswith("[dropped at step")
+                    ]
+                    prompt = (
+                        owner.constants["SUBMISSION_CHECK"]
+                        + (
+                            "\nGo through every requirement against the final diff (task text wins over this list):\n"
+                            + "\n".join(f"{rid} | {text}" for rid, text in live)
+                            if live
+                            else ""
+                        )
+                        + (
+                            "\nWithin the remaining budget, check/fix or explain unresolved items, then submit again."
+                            if held
+                            else "\nInsufficient remaining budget for a held check: accepting this submission immediately."
+                        )
                     )
                     owner.audit("submission_check", held=held, text=prompt)
                     if held:

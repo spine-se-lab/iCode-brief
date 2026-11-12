@@ -1,4 +1,4 @@
-"""EvalHub entrypoint for Compass v1.9 + iCode, fetched from a named Git branch."""
+"""EvalHub entrypoint for Compass v1.15 + iCode, fetched from a named Git branch."""
 
 from __future__ import annotations
 
@@ -18,9 +18,9 @@ from harbor.agents.base import BaseAgent
 SANDBOX_BOOTSTRAP = ""  # Filled by build_agent.py in the standalone upload.
 
 REPO_URL = "https://github.com/spine-se-lab/iCode-brief.git"
-REPO_REF = "codex/compass-v1.9-evalhub"
+REPO_REF = "codex/compass-v1.15-evalhub"
 ICODE_COMMIT = "ffdc67ed74c1c2d78d16ab4b8544fed8d9ee3c69"
-R5_ARCHIVE = "032bd720722e99ea3c783a8844aa15fac31e5c612203e18f1060c423e3923ac7"
+R5_ARCHIVE = "3bc92bf4243046adddc3723b84d2dbc39eb928e6b6df60e36ab0b171b6d2b628"
 
 
 async def stop_process(process):
@@ -71,7 +71,7 @@ def observed_usage(events_path):
 
 
 class R5ICodeAgent(BaseAgent):
-    """Compass v1.9 + iCode, with tools executed by the assigned Harbor sandbox."""
+    """Compass v1.15 + iCode, with tools executed by the assigned Harbor sandbox."""
 
     def __init__(
         self,
@@ -119,7 +119,7 @@ class R5ICodeAgent(BaseAgent):
         return "r5-icode"
 
     def version(self):
-        return "compass-v1.9-icode-0.34.0-git"
+        return "compass-v1.15-icode-0.34.0-git"
 
     async def setup(self, environment):
         if self.execution_mode == "sandbox":
@@ -359,7 +359,7 @@ class R5ICodeAgent(BaseAgent):
                         "branch": self.repo_ref,
                         "commit": commit,
                         "icode_upstream": ICODE_COMMIT,
-                        "compass_version": "1.9",
+                        "compass_version": "1.15",
                         "compass_archive_sha256": R5_ARCHIVE,
                     },
                     indent=2,
@@ -537,7 +537,7 @@ class R5ICodeAgent(BaseAgent):
                     "r5_icode": {
                         "upstream": ICODE_COMMIT,
                         "r5_archive": R5_ARCHIVE,
-                        "compass_version": "1.9",
+                        "compass_version": "1.15",
                         "source": json.loads((logs / "source-identity.json").read_text()),
                         "platform_model_name": self.model_name,
                         "api_model": model,

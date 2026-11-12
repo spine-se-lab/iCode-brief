@@ -96,6 +96,11 @@ async def send(client, request, **kwargs):
             assert any(m.get("reasoning_content") for m in body["messages"] if m["role"] == "assistant")
         if step == 5:
             assert any(r.controller.constants["SUBMISSION_CHECK"] in str(m.get("content")) for m in body["messages"])
+            assert any(
+                "Go through every requirement against the final diff" in str(m.get("content"))
+                and "R1 | Return an empty list for empty input." in str(m.get("content"))
+                for m in body["messages"]
+            )
     else:
         side_bodies.append(body)
         if mode == "timeout" or (mode == "recover" and len(side_bodies) == 1):

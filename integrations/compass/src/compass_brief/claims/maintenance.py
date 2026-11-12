@@ -16,6 +16,8 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Any, Final
 
 from compass_brief.briefing.render import render_active_brief_with_actions
+from compass_brief.events import GoalUpdated
+from compass_brief.task_contract.models import MAX_CONCLUSIONS, GoalConclusion, GoalState
 from compass_brief.claims.coverage import CoverageRetraction, is_weak_coverage
 from compass_brief.claims.models import (
     CLAIM_KINDS,
@@ -285,7 +287,27 @@ _MAINTENANCE_RESPONSE_SCHEMA: Final[dict[str, Any]] = {
         "deactivate",
         "requirement_coverage",
         "coverage_retractions",
+        "contract_revisions",
     ],
+}
+_CONTRACT_REVISIONS_MAX: Final[int] = 2
+_MAINTENANCE_RESPONSE_SCHEMA["properties"]["contract_revisions"] = {
+    "type": "array",
+    "maxItems": _CONTRACT_REVISIONS_MAX,
+    "description": "Corrections to the goal, a requirement (R) or a constraint (K) that visible material shows wrong. Usually empty.",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "id": {"type": "string", "description": "R3, K2, goal, new_R or new_K"},
+            "action": {"type": "string", "enum": ["revise", "add", "drop"]},
+            "new_text": {"type": "string", "maxLength": 500},
+            "source_quote": {"type": "string", "maxLength": 400},
+            "evidence_refs": {"type": "array", "items": {"type": "string"}},
+            "reason": {"type": "string", "maxLength": 300},
+        },
+        "required": ["id", "action", "new_text", "source_quote", "evidence_refs", "reason"],
+    },
 }
 _MAX_CHECKED_CLAIMS: Final[int] = 6
 _MAX_REQUIREMENTS_PER_CLAIM: Final[int] = 2
@@ -394,7 +416,7 @@ Rules:
   a type conversion, or why an observed failure is dismissed. Keep the condition and untested limitation in
   the statement itself, not only in evidence_digest. Do not invent a missing assumption. Create a claim only for:
   (a) an implementation decision, assumption, task interpretation, scope narrowing, or dismissal of a failure or
-      report that the agent states in its replies or reasoning (kind=stated; keep its own words);
+      report that the agent states in its replies or reasoning (kind=stated; keep its key terms and conditions);
   (b) a repository fact such a decision depends on or contradicts: a signature, default, documented behavior,
       analogous existing implementation or test expectation, quoted from the read output with its file;
   (c) the latest result of a check on the current candidate (test, build, reproduction). Supersede the previous
@@ -456,9 +478,18 @@ Rules:
   excerpt_truncated marks a shortened result; read_range/read_full describe the original read, not extra text you saw.
   Never infer absence of code or behavior from an omitted tail or a partial read. Even read_full=true does not
   make a truncated excerpt complete. State only what the visible evidence establishes; leave the rest unverified.
-- Put the result and its limitation first, then a short scope. Do not spend the statement on commands or input lists
-  before reporting failure, timeout, missing output, or partial success. Aim for 300 characters per complete claim;
-  use more when needed to preserve a condition or exception (storage limit: 2048 characters).
+- Write each statement as ONE plain sentence that a reader who never saw the evidence understands. Start with a
+  label, then the content, present tense:
+    kind=stated:      "Decision: ...", "Assumption: ...", "Reading of the task: ...", "Dismissed failure: ...",
+                      "Claims done: ..." (a completion assertion), "Changed test: ..." (an expectation/input change)
+    kind=observation: "Test <path> (repository test | newly added test | own script): <N passed, M failed> ...",
+                      "Command `<short command>`: exit <code>; <what the output shows>",
+                      "Repo <file>: <the fact>"
+  Never write "Agent's stated", "the agent", "visible excerpt" or "E-0xx"/"C-0xx"/"R3" inside the statement: IDs belong
+  in evidence_refs, conflicts and requirement_coverage. Say an unknown in a few words ("counts not shown").
+  Aim for 200 characters; go up to 400 only to keep a condition or exception (storage limit: 2048 characters).
+  Put the result and its limitation first. Do not spend the statement on commands or input lists before reporting
+  failure, timeout, missing output, or partial success.
   Shorten phrasing, not conditions: remove narration before dropping a negation, exception, precondition or
   check limitation. Only statements exceeding the storage limit require repair; never use an ellipsis to omit their semantics.
   Missing error details stay unknown; do not invent a cause to complete a fragment.
@@ -541,6 +572,14 @@ Rules:
   Missing new evidence, a different phase, or not mentioning a claim this round is NOT a reason to unlink it.
   Contradictory or stale evidence changes verdict/tension, not relevance. Never add and retract the same pair.
   The host handles Claim merges/deactivation. Do not invent claims to fill coverage.
+- contract_revisions: the goal, R and K were extracted once, before the work, and can be wrong. Fix one only when
+  task_text or a cited evidence excerpt shows it: an R or the goal misstates, narrows, widens or omits the task
+  wording; a task clause has no R (add new_R); a "(repo)" K names a file, API or rule that evidence shows is
+  different or absent (revise or drop it). new_text is the full corrected text; an R or goal must restate the task
+  wording. source_quote is copied word for word from task_text (goal, R, task K) or from the excerpt of a cited
+  evidence_refs item ((repo) K). Drop an R only when the task text does not contain it or it repeats another R
+  (name that R in reason); to merge, revise one R to the combined task wording and drop the repeat. Never change the
+  contract to fit the agent's implementation, tests or reading, and never weaken an R. Use [] in almost every window.
 - Return the JSON object immediately. Do not output analysis, prose, or Markdown fences.
 - Every top-level array and every object field in the schema is required. Use [] for an operation with no entries and "" for an optional string with no value.
 Output the JSON instance matching the supplied response schema exactly.
@@ -584,6 +623,71 @@ class ClaimMaintenance:
             evidence_lookup=self._evidence_lookup,
             session_created_paths=self._evidence.created_paths,
         )
+
+    issue_text: str = ""  # V1.14: the bound task text; contract revisions must quote it
+
+    async def _apply_contract_revisions(self, rows, evidence, step: int) -> list[str]:
+        """V1.14: apply checked goal/R/K corrections; an unchecked row changes nothing. Returns the change labels."""
+        norm = lambda text: " ".join(text.split()).casefold()
+        issue = norm(self.issue_text)
+        excerpts = {evidence_id(item.sequence): norm(item.excerpt) for item in evidence}
+        goal = self._goal.snapshot()
+        conclusions, description, labels = list(goal.conclusions), goal.description, []
+
+        def positions(tag: str, prefix: str) -> dict[str, int]:
+            found = [i for i, item in enumerate(conclusions) if item.tag == tag]
+            return {f"{prefix}{n}": i for n, i in enumerate(found, 1)}
+
+        words = lambda text: {w.lower() for w in re.findall(r"[A-Za-z_][A-Za-z0-9_]{3,}", text)}
+        issue_words = words(self.issue_text)
+        for row in rows:
+            logger.warning("claims: contract revision proposed: %s", json.dumps(row, ensure_ascii=False)[:600])
+            ident, action, reason = row["id"].strip(), row["action"], " ".join(row["reason"].split())
+            text, quote = " ".join(row["new_text"].split()), norm(row["source_quote"])
+            in_issue = len(quote) >= 12 and quote in issue
+            in_evidence = len(quote) >= 12 and any(quote in excerpts.get(ref, "") for ref in row["evidence_refs"])
+            where = {**positions("criteria", "R"), **positions("constraint", "K")}
+            old = conclusions[where[ident]] if ident in where else None
+            repo_k = old is not None and ident.startswith("K") and old.content.startswith("(repo)")
+            if old is not None and old.status == "refuted":
+                continue  # a dropped K stays dropped
+            if ident == "goal" and action == "revise" and in_issue and text:
+                description, label = text, "goal revised"
+            elif ident.startswith("R") and old and action == "revise" and in_issue and text:
+                conclusions[where[ident]], label = replace(old, content=text), f"{ident} revised"
+            elif ident.startswith("K") and old and action == "revise" and text and (in_issue or (repo_k and in_evidence)):
+                text = text if in_issue or text.startswith("(repo)") else f"(repo) {text}"
+                conclusions[where[ident]], label = replace(old, content=text), f"{ident} revised"
+            elif ident.startswith("R") and old and action == "drop" and (
+                len(words(old.content) & issue_words) < 0.5 * max(1, len(words(old.content)))  # not in the task text
+                or any(len(words(old.content) & words(other.content)) >= 0.8 * max(1, len(words(old.content)))
+                       for rid, i in where.items() if rid.startswith("R") and rid != ident
+                       for other in [conclusions[i]] if other.status != "refuted")  # repeats a live R
+            ):
+                conclusions[where[ident]] = replace(old, content=f"[dropped at step {step}] {old.content}", status="refuted")
+                label = f"{ident} dropped"
+            elif ident.startswith("K") and old and action == "drop" and repo_k and in_evidence:
+                conclusions[where[ident]] = replace(old, content=f"[dropped at step {step}] {old.content}", status="refuted")
+                label = f"{ident} dropped"
+            elif ident in {"new_R", "new_K"} and action == "add" and text and (in_issue or (ident == "new_K" and in_evidence)):
+                tag, prefix = ("criteria", "R") if ident == "new_R" else ("constraint", "K")
+                text = text if in_issue or text.startswith("(repo)") else f"(repo) {text}"
+                conclusions.append(GoalConclusion(content=text, tag=tag))
+                label = f"{prefix}{len(positions(tag, prefix))} added"
+            else:
+                logger.warning("claims: rejected contract revision %s/%s (quote not found or not allowed)", ident, action)
+                continue
+            if len(conclusions) >= MAX_CONCLUSIONS:
+                break
+            conclusions.append(GoalConclusion(content=f"Contract change at step {step}: {label}. Reason: {reason}", tag="scope"))
+            labels.append(label)
+        if labels:
+            # ponytail: coverage links of a revised R/K are kept; the next requirement check re-judges them.
+            # Reset that ID's coverage if a revised requirement keeps showing an old "passing test".
+            goal = await self._goal.replace(GoalState(description=description, conclusions=tuple(conclusions)))
+            await self._bus.publish(GoalUpdated(state=goal, session_id=self._session_id))
+            logger.warning("claims: contract revised at step %d: %s", step, ", ".join(labels))
+        return labels
 
     async def maintain(
         self, client: MaintenanceModel, *, phase: str, conversation_batches=None, deadline=None, **kwargs
@@ -723,6 +827,8 @@ class ClaimMaintenance:
                     has_agent_statements=bool(agent_statements),
                 )
                 maintenance_committed = True
+                if delta.contract_revisions:
+                    await self._apply_contract_revisions(delta.contract_revisions, (*delta_items, *retrieved), end_step)
                 if on_conversation_committed is not None:
                     on_conversation_committed(agent_statements, user_messages)
                 overflow_actions.extend(rendered[result.snapshot.state.revision][1])
@@ -1294,6 +1400,7 @@ class ClaimMaintenance:
             fold_scope=fold_scope,
             stage_end=stage_end,
             first_change_step=self._first_change_step(),
+            task_text=self.issue_text,
         )
         response_schema = deepcopy(_MAINTENANCE_RESPONSE_SCHEMA)
         allowed_evidence_refs = [evidence_id(item.sequence) for item in (*evidence_delta, *retrieved_evidence)]
@@ -1407,7 +1514,9 @@ def parse_maintenance_response(text: str) -> ClaimDelta:
         raise ResponseSchemaError("response", "object")
     payload.setdefault("requirement_coverage", [])
     payload.setdefault("coverage_retractions", [])
+    payload.setdefault("contract_revisions", [])
     required = {
+        "contract_revisions",
         "new_claims",
         "augment",
         "merge",
@@ -1455,7 +1564,24 @@ def parse_maintenance_response(text: str) -> ClaimDelta:
             for entry in _object_list(payload["requirement_coverage"], "requirement_coverage")
         ),
         coverage_retractions=_coverage_retractions(payload["coverage_retractions"]),
+        contract_revisions=_contract_revisions(payload["contract_revisions"]),
     )
+
+
+_REVISION_FIELDS: Final[tuple[str, ...]] = ("id", "action", "new_text", "source_quote", "reason")
+
+
+def _contract_revisions(value: object) -> tuple[dict[str, Any], ...]:
+    """Structural check only; whether a row may change the contract is decided when it is applied."""
+    rows = []
+    for entry in value if isinstance(value, list) else []:
+        if (isinstance(entry, dict) and all(isinstance(entry.get(k), str) for k in _REVISION_FIELDS)
+                and isinstance(entry.get("evidence_refs"), list)):
+            rows.append({**{k: entry[k] for k in _REVISION_FIELDS},
+                         "evidence_refs": tuple(r for r in entry["evidence_refs"] if isinstance(r, str))})
+        else:
+            logger.warning("claims: ignored malformed contract revision")
+    return tuple(rows[:_CONTRACT_REVISIONS_MAX])
 
 
 def _coverage_retractions(value: object) -> tuple[CoverageRetraction, ...]:
@@ -1514,6 +1640,7 @@ def _build_prompt(
     stage_end: bool,
     first_change_step: int,
     user_messages: tuple[dict, ...] = (),
+    task_text: str = "",
 ) -> str:
     active = {item.id for item in snapshot.claims if item.id in snapshot.state.active_ids}
     requirements = requirement_entries(goal)
@@ -1531,6 +1658,7 @@ def _build_prompt(
     merged_claims = [item for item in snapshot.claims if item.id in active and item.supporting_claim_ids]
     contradiction_pairs = _contradiction_candidate_pairs(snapshot, requirements, first_change_step)
     payload = {
+        **({"task_text": task_text} if task_text else {}),
         "goal": {
             "description": goal.description,
             "attributes": [

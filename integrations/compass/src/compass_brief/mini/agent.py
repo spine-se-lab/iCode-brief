@@ -634,7 +634,13 @@ class CompassMiniAgent(SubmissionSafeMiniAgent):
             return None
         remaining = self.config.step_limit - self.n_calls if self.config.step_limit > 0 else None
         hold = (remaining is None or remaining >= 15) and not self._out_of_budget()
+        compass = getattr(self, "compass", None)  # the harness seam test calls this on a bare stub
+        live = [(rid, " ".join(text.split())) for rid, text in requirement_entries(compass.goals.snapshot())
+                if not text.startswith("[dropped at step")] if compass is not None else []
         content = SUBMISSION_CHECK + (
+            "\nGo through every requirement against the final diff (task text wins over this list):\n"
+            + "\n".join(f"{rid} | {text}" for rid, text in live) if live else ""
+        ) + (
             "\nWithin the remaining budget, check/fix or explain unresolved items, then submit again."
             if hold else "\nInsufficient remaining budget for a held check: accepting this submission immediately."
         )

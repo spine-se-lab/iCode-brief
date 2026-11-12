@@ -89,7 +89,7 @@ def render_active_brief(
     return brief
 
 
-def render_active_brief_with_actions(
+def _render_v19_with_actions(
     snapshot: ClaimSnapshot,
     goal: GoalState,
     evidence: tuple[EvidenceRecord, ...],
@@ -940,3 +940,265 @@ def _contract_warning(goal: GoalState) -> tuple[str, ...]:
     if any(item.tag == "extraction" and "regex_fallback" in item.content for item in goal.conclusions):
         return ("[Contract extraction degraded: R/K may omit behavior. Check the original task; coverage is incomplete.]",)
     return ()
+
+
+# ---- V1.14: plain fixed-field Brief -------------------------------------------------------------------------
+_LITE_CLAIMS_MAX: Final[int] = 12  # ponytail: fixed row cap; rank-by-relevance is the upgrade if key claims drop
+_LITE_STATUS: Final[dict[str, str]] = {
+    "none": "no evidence",
+    "stated": "only claimed",
+    "self_check": "own script only",
+    "repo": "code read only",
+    "new_test": "test you added",
+    "repo_test": "repo test",
+}
+_LITE_CONFLICT: Final[dict[str, str]] = {
+    "fork (boundary not yet run)": "boundary case not run yet",
+    "fork (your reading is unverified)": "your reading may differ from the task text",
+    "requirement": "your claim may break the requirement",
+}
+_LITE_SOURCE: Final[dict[str, str]] = {
+    "agent_only": "your own statement",
+    "self_check": "your own script",
+    "new_test": "test you added",
+    "repo_test": "repo test",
+    "repo": "code read",
+    "issue": "task text",
+}
+
+
+def render_active_brief_with_actions(
+    snapshot: ClaimSnapshot,
+    goal: GoalState,
+    evidence: tuple[EvidenceRecord, ...],
+    *,
+    current_step: int | None = None,
+    phase: str = "",
+    repo_path: str = "",
+    max_already_read: int = 4,
+    brief_budget_chars: int = 2500,
+    detail_entry: str = CANONICAL_DETAIL_ENTRY,
+    detail_renderer=None,
+) -> tuple[str, tuple[str, ...]]:
+    """V1.14 layout; the V1.9 renderer is the fallback when even the shortest V1.14 Brief is over budget."""
+    budget = max(1, brief_budget_chars)
+    step = max(snapshot.state.processed_step, current_step if current_step is not None else
+               (evidence[-1].sequence if evidence else 0))
+    finish = (lambda b: detail_renderer(b)) if detail_renderer else (lambda b: b.replace(CANONICAL_DETAIL_ENTRY, detail_entry))
+    for claims in range(_LITE_CLAIMS_MAX, -1, -1):
+        for already_read in (max_already_read, 0):
+            brief = finish(_render_lite(snapshot, goal, evidence, step=step, repo_path=repo_path,
+                                        claims_max=claims, max_already_read=already_read))
+            if len(brief) <= budget:
+                return brief, ("v114_lite", f"claims_{claims}")
+    return _render_v19_with_actions(
+        snapshot, goal, evidence, current_step=current_step, phase=phase, repo_path=repo_path,
+        max_already_read=max_already_read, brief_budget_chars=budget, detail_entry=detail_entry,
+        detail_renderer=detail_renderer,
+    )
+
+
+def _lite_source(claim: ClaimRecord) -> str:
+    # agent_only on an observation means a tool result the host could not classify as a test, not a statement.
+    return "command output" if claim.kind == "observation" and claim.grounding == "agent_only" else _LITE_SOURCE[claim.grounding]
+
+
+_RISKY_DECISION = re.compile(
+    r"^(Reading of the task|Dismissed failure|Changed test|Assumption|Claims done)\b"
+    r"|dismiss|assum|interpret|expectation was changed|changed (the )?(test|expectation)", re.I)
+_FOCUS_MAX: Final[int] = 5
+_ROTATE: Final[int] = 4  # ponytail: fixed window; weight toward untested clauses if evidence ever keeps test bodies
+
+
+def _render_lite(
+    snapshot: ClaimSnapshot,
+    goal: GoalState,
+    evidence: tuple[EvidenceRecord, ...],
+    *,
+    step: int,
+    repo_path: str,
+    claims_max: int,
+    max_already_read: int,
+) -> str:
+    """V1.15: the whole contract on the first Brief; afterwards only what needs attention."""
+    active = {item.id: item for item in snapshot.claims if item.id in snapshot.state.active_ids}
+    live = {k: v for k, v in active.items() if v.verdict != "stale" and not v.superseded_by and v.kind != "activity"}
+    requirements = requirement_entries(goal)
+    text_of = dict(requirements)
+    dropped = {rid for rid, text in requirements if text.startswith("[dropped at step")}
+    conflicts = tension_lines(active, snapshot.conflict_notes, unresolved_only=True)
+    description = _RUNTIME_GOAL_RE.sub("", goal.description).strip(" ;-:") or "(not set)"
+    flat = lambda text: " ".join(text.split())
+    newest = lambda c: max((parse_evidence_id(r) or 0 for r in c.evidence_refs), default=c.created_step)
+    by_new = sorted(live.values(), key=newest, reverse=True)
+
+    # A check is failing when the newest run it cites ended in error (a later passing rerun clears it), or a tool
+    # result contradicted it. Only checks count: tests, own scripts, reproductions — not a grep miss or git hiccup.
+    failed = {evidence_id(e.sequence) for e in evidence if e.outcome == "error" and (
+        e.kind == "test" or is_test_attempt(e.target) or e.action_class in {"self_script", "new_test", "reproduce"})}
+    latest_ref = lambda c: max(c.evidence_refs, key=lambda r: parse_evidence_id(r) or 0, default="")
+    failing = [c for c in by_new if c.kind == "observation" and (c.verdict == "contradicted" or latest_ref(c) in failed)]
+    passing = [c for c in by_new if c.kind == "observation" and c.verdict == "supported"
+               and c.grounding in {"new_test", "repo_test"} and c not in failing]
+    risky = [c for c in by_new if c.kind == "stated" and c.verdict != "supported" and _RISKY_DECISION.search(c.statement)]
+    cap = min(_FOCUS_MAX, claims_max)
+    failing, risky = failing[:cap], risky[:cap]
+
+    # Requirements shown after the first Brief: every one in an open conflict, plus a rotating window over the rest,
+    # so each requirement comes back in turn. No coverage link decides it (those links proved unreliable).
+    pair_ids = lambda line: line[2:].partition(": ")[0].split(" ↔ ")
+    hot = [i for line in conflicts for i in pair_ids(line) if re.fullmatch(r"[RK]\d+", i)]
+    hot = [rid for rid in dict.fromkeys(hot) if rid in text_of and rid not in dropped]
+    pool = [rid for rid, _ in requirements if rid not in hot and rid not in dropped]
+    start = (snapshot.state.revision * _ROTATE) % len(pool) if pool else 0
+    window = (pool + pool)[start:start + min(_ROTATE, len(pool))]
+
+    lines = [f"=== COMPASS REMINDER (step {step}) ==="]
+    if snapshot.state.maintenance_degraded_after_step is not None and snapshot.state.processed_step < step:
+        lines.append(f"Note: covers steps up to {snapshot.state.processed_step} only.")
+    lines += ["From this session's record only; no new facts, not proof. Details: inspect_compass_brief([\"R2\"]) or ([\"C-012\"]).",
+              "", "GOAL", description, *_contract_warning(goal)]
+    changes = [c.content for c in goal.conclusions if c.tag == "scope" and c.content.startswith("Contract change at step")]
+    if changes:
+        lines += ["", "CONTRACT CHANGES (corrected during this run)", *changes]
+
+    if snapshot.state.last_brief_step == 0:  # first Brief: the whole contract once
+        for title, prefix in (("REQUIREMENTS", "R"), ("CONSTRAINTS (each binds on its own)", "K")):
+            rows = [(rid, t) for rid, t in requirements if rid.startswith(prefix) and rid not in dropped]
+            if rows:
+                lines += ["", title, *(f"{rid} | {flat(t)}" for rid, t in rows)]
+    else:
+        if hot:
+            lines += ["", "REQUIREMENTS IN CONFLICT", *(f"{rid} | {flat(text_of[rid])}" for rid in hot)]
+        if window:
+            lines += ["", f"REQUIREMENTS THIS ROUND ({len(window)} of {len(pool)}; each comes back in turn — does the code still meet them?)",
+                      *(f"{rid} | {flat(text_of[rid])}" for rid in window)]
+        rest = tuple(rid for rid in pool if rid not in window)
+        if rest:
+            lines += [f"Not shown this round ({_compact_id_ranges(rest)}): your task text; inspect_compass_brief by ID."]
+
+    todo = [f"Settle {' vs '.join(pair_ids(line))}: run the input that tells the two readings apart, on the public entry point."
+            for line in conflicts]
+    todo += [f"{c.id} is still failing: fix it, or say why it does not matter." for c in failing]
+    todo += [f"{c.id} changed a test or dismissed a failure: the original expectation is still unchecked."
+             for c in risky if re.search(r"^(Changed test|Dismissed failure)|dismiss|expectation was changed|changed (the )?(test|expectation)", c.statement, re.I)]
+    if todo:
+        lines += ["", "NEXT CHECKS", *(f"{n}. {t}" for n, t in enumerate(todo[:_FOCUS_MAX], 1))]
+
+    if conflicts:
+        lines += ["", "CONFLICTS (a stated choice or a self-written test does not settle one)"]
+        for line in conflicts:
+            pair, _, note = line[2:].partition(": ")
+            kind, _, detail = note.partition(": ")
+            lines.append(f"{pair.replace(' ↔ ', ' vs ')} | {_LITE_CONFLICT.get(kind, kind)}")
+            if detail:
+                lines.append(f"  detail: {flat(detail)}")
+            lines += [f"  {cid} says: {flat(live[cid].statement)}" for cid in pair.split(" ↔ ") if cid in live]
+
+    if failing:
+        lines += ["", "FAILING OR UNRESOLVED CHECKS (newest first)", *(f"{c.id} | {flat(c.statement)}" for c in failing)]
+    if passing:
+        lines += ["", f"LATEST PASSING CHECK | {passing[0].id} | {flat(passing[0].statement)}"]
+    if risky:
+        lines += ["", "UNVERIFIED CHOICES THAT DECIDE CORRECTNESS", *(f"{c.id} | {flat(c.statement)}" for c in risky)]
+    shown = len(failing) + bool(passing) + len(risky)
+    if len(live) > shown:
+        lines.append(f"(+{len(live) - shown} other claims: inspect_compass_brief([]))")
+
+    already = render_previously_read(evidence, root=repo_path, max_files=max_already_read)
+    if already:
+        lines += ["", "ALREADY READ", *already]
+    return "\n".join(lines).strip()
+
+
+def _render_lite_v114(
+    snapshot: ClaimSnapshot,
+    goal: GoalState,
+    evidence: tuple[EvidenceRecord, ...],
+    *,
+    step: int,
+    repo_path: str,
+    claims_max: int,
+    max_already_read: int,
+) -> str:
+    active = {item.id: item for item in snapshot.claims if item.id in snapshot.state.active_ids}
+    live = {k: v for k, v in active.items() if v.verdict != "stale" and not v.superseded_by}
+    requirements = requirement_entries(goal)
+    ages = {rid: age for age, rid, _, _ in weak_requirements(snapshot, requirements, current_step=step, minimum_age=0)}
+    conflicts = tension_lines(active, snapshot.conflict_notes, unresolved_only=True)
+    description = _RUNTIME_GOAL_RE.sub("", goal.description).strip(" ;-:") or "(not set)"
+
+    def status(rid: str) -> str:
+        level = snapshot.state.requirement_coverage.get(rid, RequirementCoverage()).level
+        return f"{_LITE_STATUS.get(level, level)}, not confirmed" if rid in ages and level in {"new_test", "repo_test"} \
+            else _LITE_STATUS.get(level, level) if rid in ages else "passing test"
+
+    lines = [f"=== COMPASS REMINDER (step {step}) ==="]
+    if snapshot.state.maintenance_degraded_after_step is not None and snapshot.state.processed_step < step:
+        lines.append(f"Note: this reminder covers steps up to {snapshot.state.processed_step} only; later steps are not in it yet.")
+    lines += [
+        "Built only from what this session already recorded. It adds no new facts and is not proof.",
+        'Look up any ID for full detail: inspect_compass_brief(["R2"]) or inspect_compass_brief(["C-012"]).',
+        "", "GOAL", description, *_contract_warning(goal),
+    ]
+    changes = [c.content for c in goal.conclusions if c.tag == "scope" and c.content.startswith("Contract change at step")]
+    if changes:
+        lines += ["", "CONTRACT CHANGES (the goal/requirements below were corrected during this run)", *changes]
+    dropped = {rid for rid, text in requirements if text.startswith("[dropped at step")}
+
+    # NEXT CHECKS: IDs only, grouped by what is missing; the detail lives in the sections below.
+    todo: list[str] = []
+    todo += [f"Settle conflict {line[2:].partition(': ')[0].replace(' ↔ ', ' vs ')}: run the input that tells the "
+             "two readings apart, on the public entry point (see CONFLICTS)." for line in conflicts]
+    todo += [f"{c.id} was contradicted by a tool result; do not rely on it." for c in live.values() if c.verdict == "contradicted"]
+    groups: dict[str, list[str]] = {}
+    for rid, _ in requirements:
+        if rid in ages and rid not in dropped:
+            groups.setdefault(status(rid), []).append(rid)
+    advice = {"code read only": "reading code does not show the behavior; run a test that exercises it",
+              "no evidence": "nothing checks it yet"}
+    for label, ids in groups.items():
+        todo.append(f"{_compact_id_ranges(tuple(ids))}: {label} — {advice.get(label, 'no passing test shows it yet')}.")
+    if todo:
+        lines += ["", "NEXT CHECKS", *(f"{n}. {line}" for n, line in enumerate(todo, 1))]
+
+    for title, prefix in (("REQUIREMENTS (status = strongest evidence so far)", "R"),
+                          ("CONSTRAINTS (each one binds on its own)", "K")):
+        rows = [(rid, text) for rid, text in requirements if rid.startswith(prefix)]
+        if rows:
+            lines += ["", title]
+            lines += [f"{rid} | {'dropped' if rid in dropped else status(rid)} | {' '.join(text.split())}" for rid, text in rows]
+
+    if conflicts:
+        lines += ["", "CONFLICTS (not settled; a choice you stated or a test written to your own reading does not settle one)"]
+        for line in conflicts:
+            pair, _, note = line[2:].partition(": ")
+            kind, _, detail = note.partition(": ")
+            lines.append(f"{pair.replace(' ↔ ', ' vs ')} | {_LITE_CONFLICT.get(kind, kind)}")
+            if detail:
+                lines.append(f"  detail: {' '.join(detail.split())}")
+            lines += [f"  {cid} says: {' '.join(live[cid].statement.split())}"
+                      for cid in pair.split(" ↔ ") if cid in live]
+
+    failed = {evidence_id(e.sequence) for e in evidence if e.outcome == "error" and (e.kind == "test" or is_test_attempt(e.target))}
+    ranked = sorted((c for c in live.values() if c.kind != "activity"), key=lambda c: _claim_sort_key(c, failed))
+    half = (claims_max + 1) // 2
+    sections = (
+        ("TOOL RESULTS (what commands and tests showed; ID | check status | source | text)",
+         [c for c in ranked if c.kind == "observation"][:half]),
+        ("YOUR DECISIONS AND PLANS (not checked unless marked supported; ID | check status | source | text)",
+         [c for c in ranked if c.kind == "stated"][:claims_max - half]),
+    )
+    shown = 0
+    for title, rows in sections:
+        if rows:
+            lines += ["", title]
+            lines += [f"{c.id} | {c.verdict} | {_lite_source(c)} | {' '.join(c.statement.split())}" for c in rows]
+            shown += len(rows)
+    if len(ranked) > shown:
+        lines.append(f"(+{len(ranked) - shown} older claims: inspect_compass_brief([]))")
+
+    already = render_previously_read(evidence, root=repo_path, max_files=max_already_read)
+    if already:
+        lines += ["", "ALREADY READ", *already]
+    return "\n".join(lines).strip()

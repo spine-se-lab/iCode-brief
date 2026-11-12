@@ -363,6 +363,7 @@ class CompassSession:
                     append_brief=False,
                 )
             await self.goals.replace(goal)
+            self._runner.issue_text = issue  # V1.14: contract revisions must quote the task text
             self._extracted_issue = issue.strip() if extraction is not None else ""
             self._pending_contract = issue if extraction is None else ""
             await self._events.publish(GoalUpdated(state=goal, session_id=self._session_id))

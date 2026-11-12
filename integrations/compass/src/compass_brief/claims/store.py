@@ -144,6 +144,7 @@ class ClaimDelta:
     deactivate: tuple[ClaimDeactivate, ...] = ()
     requirement_coverage: tuple[tuple[str, tuple[str, ...]], ...] = ()
     coverage_retractions: tuple[CoverageRetraction, ...] = ()
+    contract_revisions: tuple[dict, ...] = ()  # V1.14: applied by ClaimMaintenance, not by the store
 
 
 @dataclass(frozen=True, slots=True)
