@@ -220,6 +220,17 @@ def maintenance_reasoning(settings: CallSettings) -> dict:
     return {"reasoning": {"enabled": False}}
 
 
+def deepseek_reasoning(reasoning: dict) -> dict:
+    """The official DeepSeek API ignores OpenRouter's `reasoning` object and thinks by default (effort high)."""
+    effort = reasoning.get("reasoning")
+    if not isinstance(effort, dict):
+        return reasoning
+    rest = {key: value for key, value in reasoning.items() if key != "reasoning"}
+    if effort.get("enabled") is False:
+        return rest | {"thinking": {"type": "disabled"}}
+    return rest | ({"reasoning_effort": effort["effort"]} if effort.get("effort") else {})
+
+
 _ITEM_LABEL = re.compile(r"^- (?:\[[A-Z]+\] )?([^\s:]+(?: ↔ [^\s:]+)?)")
 
 
@@ -360,7 +371,7 @@ class CompassMiniAgentConfig(InteractiveAgentConfig):
     """Trial directory for Compass artifacts. Unset keeps the session in memory."""
     compass_maintenance_interval: int = 24
     """Evidence records between automatic Maintenance calls, not model turns."""
-    compass_brief_budget_chars: int = 6000
+    compass_brief_budget_chars: int = 15000
     compass_maintenance_model: str = ""
     """Model id for the Maintenance call. Unset reuses mini's model; ``none`` disables it."""
     compass_maintenance_response_format: Literal["json_schema", "json_object"] = "json_schema"
@@ -476,8 +487,11 @@ class CompassMiniAgent(SubmissionSafeMiniAgent):
         provider = None
         if model_id.startswith("openrouter/"):
             provider = getattr(self.model.config, "model_kwargs", {}).get("provider")
+        reasoning = maintenance_reasoning(self._call_settings)
+        if model_id.startswith("deepseek/"):
+            reasoning = deepseek_reasoning(reasoning)
         return LitellmMaintenanceModel(
-            model_id, self.side_calls, reasoning=maintenance_reasoning(self._call_settings), provider=provider,
+            model_id, self.side_calls, reasoning=reasoning, provider=provider,
             response_format=self.config.compass_maintenance_response_format,
         )
 

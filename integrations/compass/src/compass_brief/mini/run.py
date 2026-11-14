@@ -14,6 +14,12 @@ from pathlib import Path
 
 import yaml
 
+# Official DeepSeek API. `deepseek-flash` is a floating alias (DeepSeek-V4.1-Flash-1017 on 2026-11-04, per
+# api-docs.deepseek.com pricing); every response's `model` and `system_fingerprint` is logged to pin what ran.
+DEEPSEEK_API_BASE = "https://api.deepseek.com"
+DEEPSEEK_MODEL = "deepseek-flash"
+_KEY_ENV = ("DEEPSEEK_API_KEY", "DEEPSEEK_API_BASE")
+
 
 def read_key(path: Path) -> str:
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
@@ -95,8 +101,7 @@ def main(argv=None) -> int:
         parser.error("reference material is empty")
     key = read_key(args.key_file)
     args.output.mkdir(parents=True, exist_ok=False, mode=0o700)
-    previous_key = os.environ.get("OPENROUTER_API_KEY")
-    os.environ["OPENROUTER_API_KEY"] = key
+    previous_env = {name: os.environ.get(name) for name in _KEY_ENV}
     env = agent = None
     result = {}
     started = time.monotonic()
@@ -111,12 +116,13 @@ def main(argv=None) -> int:
         class AuditedModel(OpenRouterModel):
             def _query(self, messages, **kwargs):
                 # Log the actual prepared request identity, never credentials or raw prompts.
+                # Assistant messages go back as returned, so `reasoning_content` is passed back as the
+                # official API requires for thinking mode with tools.
                 payload = {"model": self.config.model_name, "messages": messages,
-                           "tools": [BASH_TOOL],
-                           "usage": {"include": True}, **(self.config.model_kwargs | kwargs)}
+                           "tools": [BASH_TOOL], **(self.config.model_kwargs | kwargs)}
                 record = {"at": time.time(), "messages": len(messages),
                           "message_hashes": [sha256(json.dumps(m, sort_keys=True).encode()).hexdigest() for m in messages],
-                          "provider": payload["provider"], "reasoning": payload["reasoning"],
+                          "provider": "deepseek-official", "reasoning": payload["reasoning_effort"],
                           "brief_messages": sum(
                               (m.get("role"), m.get("content")) in {
                                   (b.get("role"), b.get("content")) for b in agent.messages
@@ -125,15 +131,16 @@ def main(argv=None) -> int:
                           ) if agent is not None else 0}
                 with (args.output / "requests.jsonl").open("a") as log:
                     log.write(json.dumps(record) + "\n")
-                response = requests.post(self._api_url,
-                    headers={"Authorization": "Bearer " + self._api_key, "Content-Type": "application/json"},
+                response = requests.post(DEEPSEEK_API_BASE + "/chat/completions",
+                    headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
                     json=payload, timeout=900)
                 if response.status_code == 401:
                     raise OpenRouterAuthenticationError("Authentication failed")
                 response.raise_for_status()
                 data = response.json()
                 with (args.output / "responses.jsonl").open("a") as log:
-                    log.write(json.dumps({"at": time.time(), "id": data.get("id"), "provider": data.get("provider"),
+                    log.write(json.dumps({"at": time.time(), "id": data.get("id"), "model": data.get("model"),
+                                          "system_fingerprint": data.get("system_fingerprint"),
                                           "usage": data.get("usage"), "error": data.get("error")}) + "\n")
                 if not data.get("choices"):
                     raise RuntimeError("Provider returned no choices; see host-only response audit")
@@ -144,13 +151,14 @@ def main(argv=None) -> int:
         from compass_brief.mini.exploration import ExploringCompassMiniAgent
         from compass_brief.mini.submission import SubmissionSafeMiniAgent
 
-        os.environ["OPENROUTER_API_KEY"] = key
+        # Set after mini's dotenv import so the explicit key file and endpoint win; LiteLLM (Maintenance) reads
+        # both, and would otherwise default to the /beta base.
+        os.environ.update(DEEPSEEK_API_KEY=key, DEEPSEEK_API_BASE=DEEPSEEK_API_BASE)
         native = yaml.safe_load((Path(minisweagent.__file__).parent / "config/mini.yaml").read_text())
         model = AuditedModel(
             **(native.get("model", {}) | {
-                "model_name": "deepseek/deepseek-v4.1-flash",
-                "model_kwargs": {"provider": {"only": ["deepseek"], "allow_fallbacks": False},
-                                 "reasoning": {"effort": "max"}, "max_tokens": 64000},
+                "model_name": DEEPSEEK_MODEL,
+                "model_kwargs": {"reasoning_effort": "max", "max_tokens": 64000},
             })
         )
         env = DockerEnvironment(**isolated_environment_options(args.image, args.cwd, args.task_network, args.proxy_url))
@@ -164,7 +172,7 @@ def main(argv=None) -> int:
             "task_sha256": sha256(task.encode()).hexdigest(),
             "reference_sha256": sha256(reference.encode()).hexdigest() if reference else None,
             "reference_supplied": bool(reference), "isolation": isolation,
-            "provider": "deepseek", "reasoning": "max",
+            "provider": "deepseek-official", "api_base": DEEPSEEK_API_BASE, "model": DEEPSEEK_MODEL, "reasoning": "max",
         }
         (args.output / "run-identity.json").write_text(json.dumps(metadata, indent=2))
         options = native["agent"] | {
@@ -174,7 +182,7 @@ def main(argv=None) -> int:
         if args.arm != "baseline":
             agent = ExploringCompassMiniAgent(
                 model, env, **options, compass_directory=args.output / "compass",
-                compass_maintenance_model="openrouter/deepseek/deepseek-v4.1-flash",
+                compass_maintenance_model="deepseek/" + DEEPSEEK_MODEL,
                 compass_maintenance_response_format="json_object", reference_context=reference,
             )
         else:
@@ -199,10 +207,11 @@ def main(argv=None) -> int:
             (args.output / "usage.json").write_text(json.dumps(summary, indent=2))
         if env is not None:
             env.cleanup()
-        if previous_key is None:
-            os.environ.pop("OPENROUTER_API_KEY", None)
-        else:
-            os.environ["OPENROUTER_API_KEY"] = previous_key
+        for name, value in previous_env.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
 
 
 if __name__ == "__main__":

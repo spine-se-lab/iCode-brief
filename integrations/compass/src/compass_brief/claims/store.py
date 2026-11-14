@@ -17,6 +17,7 @@ from typing import Final, Literal
 from compass_brief.claims.coverage import CoverageRetraction, is_weak_coverage, retract_links
 from compass_brief.claims.models import (
     CLAIM_KINDS,
+    CONFLICT_NOTE_CHARS,
     CLAIM_VERDICTS,
     MAX_CLAIM_DIGEST_LENGTH,
     MAX_CLAIM_STATEMENT_LENGTH,
@@ -59,7 +60,9 @@ def brief_filename(revision: int) -> str:
 
 
 CorrectionKind = Literal["agent_corrected", "user_corrected", "state_changed"]
-ContradictionVerdict = Literal["conflict", "compatible", "unclear"]
+ContradictionVerdict = Literal["conflict", "fork", "boundary", "compatible", "unclear"]
+_EVIDENCE_REF_RE: Final[re.Pattern[str]] = re.compile(r"\bE-\d{3,}\b")
+_OPEN_FORKS_MAX: Final[int] = 3
 _ACTIVITY_RE = re.compile(
     r"^(?:(?:Agent |The agent )?(?:wrote|created|edited|ran|deleted|modified)\b|(?:After cleanup, )?git (?:status|diff)\b)",
     re.IGNORECASE,
@@ -120,6 +123,7 @@ class RequirementContradiction:
     requirement_excerpt: str = ""
     claim_excerpt: str = ""
     resolution: str = ""
+    distinguishing_input: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -619,8 +623,15 @@ class ClaimStore:
                 # A decision or the agent's own observation can contradict the
                 # contract without repository support. Record the tension, never
                 # promote it to a fact or let an unsupported claim resolve one.
-                ungrounded_conflict = record.kind != "activity" and item.verdict == "conflict"
-                if record.verdict == "stale" or record.superseded_by or not (grounded or ungrounded_conflict):
+                ungrounded_conflict = record.kind != "activity" and item.verdict in {"conflict", "fork", "boundary"}
+                # A resolution that cites a check from this window is grounded by that check, even
+                # when the claim it closes was the agent's own unverified reading (every V1 fork is).
+                cited_check = item.verdict == "compatible" and bool(
+                    set(_EVIDENCE_REF_RE.findall(item.resolution)) & evidence_delta_ids
+                )
+                if record.verdict == "stale" or record.superseded_by or not (
+                    grounded or ungrounded_conflict or cited_check
+                ):
                     logger.warning(
                         "claims: dropped contradiction row for %s referencing ineligible claim %s",
                         requirement_id,
@@ -629,30 +640,48 @@ class ClaimStore:
                     continue
                 pair = frozenset((requirement_id, record_id))
                 previous_note = next((note for a, b, note in notes if frozenset((a, b)) == pair), "")
-                unreasoned_resolution = (
+                open_note = bool(previous_note) and not previous_note.startswith("resolved: ")
+                # V1: only a check that ran in this window can close a tension; a stated choice cannot.
+                unproven_resolution = (
                     item.verdict == "compatible"
-                    and previous_note
-                    and not previous_note.startswith("resolved: ")
-                    and not item.resolution.strip()
+                    and open_note
+                    and not set(_EVIDENCE_REF_RE.findall(item.resolution)) & evidence_delta_ids
                 )
-                if unreasoned_resolution:
+                if unproven_resolution:
                     logger.warning(
-                        "claims: kept unresolved tension %s ↔ %s; the scan gave no resolution reason",
+                        "claims: kept unresolved tension %s ↔ %s; the resolution cites no check from this window",
                         requirement_id,
                         record_id,
                     )
                     continue
+                open_forks = [a for a, _b, note in notes if note.startswith("fork ")]
+                if item.verdict in {"fork", "boundary"} and (
+                    open_note or requirement_id in open_forks or len(open_forks) >= _OPEN_FORKS_MAX
+                ):
+                    # One open fork per requirement and a few in total, so each one stays readable and gets run.
+                    continue
                 notes = [entry for entry in notes if frozenset(entry[:2]) != pair]
-                if item.verdict == "conflict":
+                if item.verdict in {"conflict", "fork", "boundary"}:
                     notes.append(
                         (
                             requirement_id,
                             record_id,
-                            _requirement_conflict_note(item.requirement_excerpt, item.claim_excerpt),
+                            _requirement_conflict_note(
+                                item.requirement_excerpt,
+                                item.claim_excerpt,
+                                item.distinguishing_input,
+                                fork=item.verdict == "fork",
+                                boundary=item.verdict == "boundary",
+                            ),
                         )
                     )
                 elif item.verdict == "compatible" and previous_note and not previous_note.startswith("resolved: "):
-                    notes.append((requirement_id, record_id, f"resolved: {item.resolution.strip()[:190]}"))
+                    checked = (
+                        "boundary run, result matches task text — "
+                        if previous_note.startswith("fork (boundary")
+                        else "fork checked, reading not certified — " if previous_note.startswith("fork ") else ""
+                    )
+                    notes.append((requirement_id, record_id, f"resolved: {checked}{item.resolution.strip()[:190]}"))
                 elif previous_note:
                     notes.append((requirement_id, record_id, previous_note))
 
@@ -1266,10 +1295,28 @@ def _conflict_note_is_live(
     return a in active_set and b in active_set
 
 
-def _requirement_conflict_note(requirement_excerpt: str, claim_excerpt: str) -> str:
+def _requirement_conflict_note(
+    requirement_excerpt: str,
+    claim_excerpt: str,
+    distinguishing_input: str = "",
+    *,
+    fork: bool = False,
+    boundary: bool = False,
+) -> str:
     requirement = " ".join(requirement_excerpt.split())[:80]
     claim = " ".join(claim_excerpt.split())[:80]
-    return f'requirement: "{requirement}" ↔ claim: "{claim}"'[:200]
+    if boundary:  # Starts with "fork " so the fork cap, display and closure rule apply unchanged.
+        probe = " ".join(distinguishing_input.split())[:160]
+        return f'fork (boundary not yet run): requirement: "{requirement}"; run {probe}'[:CONFLICT_NOTE_CHARS]
+    note = (
+        f'fork (your reading is unverified): requirement: "{requirement}" ↔ your reading: "{claim}"'
+        if fork
+        else f'requirement: "{requirement}" ↔ claim: "{claim}"'
+    )
+    probe = " ".join(distinguishing_input.split())[:160]
+    if probe:
+        note += f"; distinguishing input: {probe}"
+    return note[:CONFLICT_NOTE_CHARS]
 
 
 def _stronger_grounding(left: ClaimGrounding, right: ClaimGrounding) -> ClaimGrounding:

@@ -60,7 +60,7 @@ class CompassSession:
         session_id=None,
         directory=None,
         repo_path=lambda: "",
-        brief_budget_chars=6000,
+        brief_budget_chars=15000,
         maintenance_config=None,
         maintenance_interval=24,
         call_settings=None,

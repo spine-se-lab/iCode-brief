@@ -49,6 +49,7 @@ _IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"`([^`\n]{1,60})`")
 _MAX_KEPT_IDENTIFIER_CHARS: Final[int] = 160
 _REQUIREMENT_LABEL_CHARS: Final[int] = 80
 _CLAIM_TEXT_CHARS: Final[int] = 160
+_FULL_CHARS: Final[int] = 1_000_000  # V1.9: full text until the budget forces the old step-downs
 _REQUIREMENT_CONFLICTS_SHOWN: Final[int] = 3
 
 
@@ -107,7 +108,7 @@ def render_active_brief_with_actions(
     while True:
         reference = _reference_contract(snapshot, goal, budget=canonical_budget * 2 // 5) if canonical_budget >= 1400 else ""
         focus = (
-            _verification_focus(snapshot, goal, evidence, budget=min(650, canonical_budget // 3))
+            _verification_focus(snapshot, goal, evidence, budget=canonical_budget // 3)
             if canonical_budget >= 1400 else ""
         )
         brief, actions = _render_canonical_brief(
@@ -279,8 +280,8 @@ def _render_canonical_brief(
     claim_limit = len(shown)
     priority_claims = [item for item in shown if _priority_claim(item)]
     claim_floor = min(3, len(priority_claims))
-    requirement_chars = _REQUIREMENT_LABEL_CHARS
-    tension_chars = 180
+    requirement_chars = _FULL_CHARS
+    tension_chars = _FULL_CHARS
 
     def _render(claims: int) -> str:
         return _render_brief(
@@ -307,11 +308,11 @@ def _render_canonical_brief(
         claim_limit -= 1
         brief = _render(claim_limit)
     while len(brief) > budget and requirement_chars > 64:
-        requirement_chars = max(64, requirement_chars - 16)
+        requirement_chars = max(64, min(requirement_chars, _REQUIREMENT_LABEL_CHARS) - 16)
         actions.append(f"requirement_chars_{requirement_chars}")
         brief = _render(claim_limit)
     while len(brief) > budget and tension_chars > 48:
-        tension_chars = max(48, tension_chars - 16)
+        tension_chars = max(48, min(tension_chars, 180) - 16)
         actions.append(f"tension_chars_{tension_chars}")
         brief = _render(claim_limit)
     if len(brief) > budget:
@@ -441,7 +442,7 @@ def _render_brief(
 
     lines.extend(("", f"Claims ({len(active)} active, {len(visible_claims)} shown):"))
     if visible_claims:
-        lines.extend(_claim_line(item, statement_chars=_CLAIM_TEXT_CHARS) for item in visible_claims)
+        lines.extend(_claim_line(item, statement_chars=_FULL_CHARS) for item in visible_claims)
         if len(shown) > len(visible_claims):
             lines.append(f"- +{len(shown) - len(visible_claims)} more (inspect_compass_brief([]))")
     elif active:
@@ -653,7 +654,14 @@ CONFLICT_REVIEW_GUIDANCE = (
     "If the wording allows two readings, check both on the same public object, conditions and observable outcome. "
     "Use task text and repository evidence to decide; do not narrow a requirement to match your implementation. "
     "Documentation, a changed test expectation or a different entry point does not resolve the original gap. "
+    "A stated choice or a self-test written under your own reading does not close a conflict or fork: run the "
+    "distinguishing input when one is given, on the public entry point, and say which reading the result follows. "
     "If still untested, keep that scope explicitly unverified."
+)
+
+
+_COMPACT_CONFLICT_HEADER: Final[str] = (
+    "Open conflicts and forks — run the distinguishing input on the public entry point; a stated choice does not close one:"
 )
 
 
@@ -661,7 +669,7 @@ def _requirement_conflict_block(lines: list[str]) -> list[str]:
     if not lines:
         return []
     return [
-        "Requirement conflicts — compare your behavior with the quoted task wording:",
+        "Requirement conflicts and open forks — compare your behavior with the quoted task wording:",
         *lines,
         CONFLICT_REVIEW_GUIDANCE,
     ]
@@ -858,21 +866,27 @@ def _traceable_contract_index(
         )
     lines.extend(("[Goal & Claims — compact index]", f"Goal: {_requirement_digest(goal.description, 48)}"))
     lines.extend(_contract_warning(goal))
+    rest: list[str] = []
     for prefix, title in (("R", "Requirements"), ("K", "Constraints")):
         items = tuple(item for item in requirements if item[0].startswith(prefix))
         if not items:
             continue
         ids = tuple(item_id for item_id, _content in items)
-        lines.append(
+        rest.append(
             f"{title}: {len(ids)} details omitted; IDs {_compact_id_ranges(ids)} — inspect_compass_brief by ID."
         )
     tension_count = len(tension_lines(active, snapshot.conflict_notes))
     if tension_count:
-        lines.append(f"Tensions: {tension_count} details omitted — inspect_compass_brief([]).")
-    lines.append(f"Evidence step: {step}; inspect_compass_brief([...]) returns every full item.")
-    result = "\n".join(lines).strip()
-    if len(result) <= budget:
-        return result
+        rest.append(f"Tensions: {tension_count} details omitted — inspect_compass_brief([]).")
+    rest.append(f"Evidence step: {step}; inspect_compass_brief([...]) returns every full item.")
+    # Open conflicts and forks are the review work; keep the newest whole ones before omitting them.
+    conflicts = requirement_conflicts(active, snapshot.conflict_notes)
+    for shown in range(len(conflicts), -1, -1):
+        block = [_COMPACT_CONFLICT_HEADER, *conflicts[len(conflicts) - shown:]] if shown else []
+        result = "\n".join([*lines, *block, *rest]).strip()
+        if len(result) <= budget:
+            return result
+    lines.extend(rest)
 
     # Keep progressively smaller *whole* omission markers for custom profiles
     # with tiny budgets.  Never slice a field: at the smallest sizes the

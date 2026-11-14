@@ -53,6 +53,10 @@ def claim_id(sequence: int) -> str:
     return f"C-{sequence:03d}"
 
 
+#: Requirement notes quote both sides plus, for V1 forks/conflicts, a distinguishing input.
+CONFLICT_NOTE_CHARS = 360
+
+
 def evidence_id(sequence: int) -> str:
     """Return the canonical display identifier for an evidence sequence."""
     return f"E-{sequence:03d}"
@@ -223,7 +227,7 @@ def parse_claims(raw: object) -> ClaimSnapshot:
                 _is_requirement_id(b) and a in known
             )
             if (endpoints_are_claims or endpoints_are_requirement_claim) and note:
-                notes.append((a, b, note[:200]))
+                notes.append((a, b, note[:CONFLICT_NOTE_CHARS]))
             elif note and (_looks_like_requirement_id(a) or _looks_like_requirement_id(b)):
                 contract_state_cleaned = True
 

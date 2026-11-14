@@ -1,4 +1,4 @@
-"""Frozen R5/mini loop with EvalHub gateway and sandbox transport adapters."""
+"""Frozen Compass v1.9/mini loop with EvalHub gateway and sandbox transport adapters."""
 
 from __future__ import annotations
 
@@ -27,12 +27,16 @@ from minisweagent.environments.local import LocalEnvironment
 from minisweagent.models.openrouter_model import OpenRouterAuthenticationError, OpenRouterModel
 from minisweagent.models.utils.actions_toolcall import BASH_TOOL
 
-ARCHIVE_SHA = "62c304ae6315ffb1c977def04b77fb9c552ac75ceb533fd249c2b0180818d257"
+ARCHIVE_SHA = "032bd720722e99ea3c783a8844aa15fac31e5c612203e18f1060c423e3923ac7"
 
 
 def verify_source(root: Path):
     manifest = json.loads((root / "SOURCE-MANIFEST.json").read_text())
-    if manifest["runtime_package_sha256"] != ARCHIVE_SHA or len(manifest["files_sha256"]) != 72:
+    if (
+        manifest.get("compass_version") != "1.9"
+        or manifest["runtime_package_sha256"] != ARCHIVE_SHA
+        or len(manifest["files_sha256"]) != 72
+    ):
         raise RuntimeError("Unexpected R5 source manifest")
     for name, expected in manifest["files_sha256"].items():
         if hashlib.sha256((root / name).read_bytes()).hexdigest() != expected:

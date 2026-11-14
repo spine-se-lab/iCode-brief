@@ -25,10 +25,10 @@ class StubBaseAgent:
 base = types.ModuleType("harbor.agents.base")
 base.BaseAgent = StubBaseAgent
 with patch.dict(sys.modules, {"harbor.agents.base": base}):
-    spec = importlib.util.spec_from_file_location("upload_agent", ROOT / "r5_mini_evalhub.py")
+    spec = importlib.util.spec_from_file_location("upload_agent", ROOT / "r5_mini_evalhub_v1_9.py")
     agent = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(agent)
-    spec = importlib.util.spec_from_file_location("compact_agent", ROOT / "r5_mini_evalhub.py")
+    spec = importlib.util.spec_from_file_location("compact_agent", ROOT / "r5_mini_evalhub_v1_9.py")
     compact_agent = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(compact_agent)
 

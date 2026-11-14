@@ -182,11 +182,27 @@ class RuntimeChecks(unittest.TestCase):
     def test_frozen_identity(self):
         manifest = runtime_bridge.verify_source(ROOT.parent / "compass")
         self.assertEqual(len(manifest["files_sha256"]), 72)
+        self.assertEqual(manifest["compass_version"], "1.9")
+
+    def test_v19_budget_and_long_claim_rendering(self):
+        from compass_brief.briefing.render import render_active_brief
+        from compass_brief.claims.models import ClaimRecord, ClaimSnapshot, ClaimState
+        from compass_brief.mini.agent import CompassMiniAgentConfig
+        from compass_brief.task_contract.models import GoalState
+
+        config = CompassMiniAgentConfig(system_template="synthetic system", instance_template="{{task}}")
+        self.assertEqual(config.compass_brief_budget_chars, 15000)
+        statement = "Preserve every condition of this synthetic observation. " * 16
+        claim = ClaimRecord(id="C-001", statement=statement.strip(), kind="observation", phase="test", created_step=1)
+        snapshot = ClaimSnapshot(state=ClaimState(active_ids=(claim.id,)), claims=(claim,))
+        brief = render_active_brief(snapshot, GoalState(description="Synthetic task"), (), brief_budget_chars=15000)
+        self.assertIn(statement.strip(), brief)
+        self.assertLessEqual(len(brief), 15000)
 
     def test_usage_unknown_is_preserved(self):
         source = build_agent.build()
         self.assertLess(len(source.encode()), 1_000_000)
-        agent = load_upload(ROOT / "r5_mini_evalhub.py")
+        agent = load_upload(ROOT / "r5_mini_evalhub_v1_9.py")
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "events"
             path.write_text(
@@ -252,7 +268,7 @@ class RuntimeChecks(unittest.TestCase):
         shutil.copytree(
             ROOT, source / "integrations/mini_evalhub", ignore=shutil.ignore_patterns(".venv", "__pycache__")
         )
-        git(source, "init", "-qb", "codex/r5-mini-original-evalhub")
+        git(source, "init", "-qb", "codex/compass-v1.9-mini-evalhub")
         git(source, "add", "integrations")
         git(source, "-c", "user.name=Test", "-c", "user.email=test@localhost", "commit", "-qm", "test source")
         upload = root / "upload.py"
@@ -313,6 +329,9 @@ class RuntimeChecks(unittest.TestCase):
         assert context.n_cache_tokens == (len(server.main) + len(server.side)) * 50
         status = context.metadata["r5_mini"]["result"]
         assert status["exit_status"] == "Submitted"
+        assert context.metadata["r5_mini"]["compass_version"] == "1.9"
+        trajectory = json.loads((root / "host/agent/trajectory.json").read_text())
+        assert trajectory["info"]["config"]["agent"]["compass_brief_budget_chars"] == 15000
         assert status["compass"]["contract"]["requirements"] == 1
         assert status["brief_followed_by_main_response"] > 0
         assert status["compass"]["reviews_before_submit"] == 0

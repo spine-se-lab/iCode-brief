@@ -322,6 +322,8 @@ _REQUIREMENT_CHECK_SCHEMA: Final[dict[str, Any]] = {
                     "incompatibility": {"type": "string", "maxLength": 240},
                     "requirement_excerpt": {"type": "string", "maxLength": 80},
                     "claim_excerpt": {"type": "string", "maxLength": 80},
+                    "distinguishing_input": {"type": "string", "maxLength": 160},
+                    "unchecked_edge": {"type": "string", "maxLength": 160},
                 },
                 "required": [
                     "requirement_id",
@@ -331,6 +333,8 @@ _REQUIREMENT_CHECK_SCHEMA: Final[dict[str, Any]] = {
                     "incompatibility",
                     "requirement_excerpt",
                     "claim_excerpt",
+                    "distinguishing_input",
+                    "unchecked_edge",
                 ],
             },
         }
@@ -364,6 +368,16 @@ Then answer the verdict:
   This is NOT a conflict. Leave incompatibility empty; the existing claim remains available for verification.
 - consistent: every item is same or not_stated, and no other reading applies; leave incompatibility empty.
 Missing coverage, unknown implementation details and differing wording are not proof of conflict.
+Separately from the verdict, fill unchecked_edge on every row: if an item you marked not_stated is an edge input
+the requirement text itself names (empty, zero, nil, missing, omitted, nested, repeated, maximum, or the like) and
+the text fixes its result, write "<public entry point>(<edge input>) -> <result the task text gives>" for the most
+important such item; the result must come from the task text, never from the agent's implementation or tests.
+Otherwise leave it empty. unchecked_edge never changes the verdict.
+For inconsistent and reading_differs, give distinguishing_input: one public entry point plus one input or condition
+on which the two readings produce different observable results, taken only from the task text and repository.
+For reading_differs, give it only when the task wording itself admits two readings with different results; an
+unverified plan, file location, design choice, or untested part has no second reading, so leave it empty.
+Leave it empty when no such input follows from the text; never derive it from the agent's implementation.
 Compare only the described behavior with the text. Do not judge whether the code works, and do not guess what
 tests expect. In requirement_excerpt and claim_excerpt quote the most important pair you compared, at most 80
 characters each.
@@ -468,8 +482,18 @@ Rules:
   requirement and a repository/test claim cannot both be literally true, or when new evidence resolves a conflict
   already listed in conflict_notes. Omit compatible, unclear, and unmatched candidates.
 - A conflict row must quote both source texts in requirement_excerpt and claim_excerpt. A resolution row must use
-  verdict=compatible and put the evidence-grounded reason in resolution. Never silently resolve a tension; an omitted
-  pair leaves its previous conflict state unchanged.
+  verdict=compatible and put the evidence-grounded reason in resolution, citing the E-ID of a check in this window
+  that ran the conflicting condition (the distinguishing input when the note names one). A stated choice, a
+  documentation edit or a self-test written under the same reading is not such a check; without a cited E-ID the
+  tension stays open. Never silently resolve a tension; an omitted pair leaves its previous conflict state unchanged.
+- A note starting with "fork" asks which reading the task means, which no check can prove. Close it only when a check
+  in this window ran its distinguishing input (or that same condition) on the public entry point, even a check the
+  agent wrote, and the observed result is exactly what one of the two readings predicts: verdict=compatible,
+  resolution "E-xxx: <observed result>; follows <which reading>". This records that the fork was exercised and which
+  reading the code follows; it does not certify that reading. A whole-suite run or a test of another condition does
+  not count. If the result fits neither reading, contradicts the task text, or shows anything unexpected, keep the
+  fork open and record what was observed as a claim. A "fork (boundary" note closes the same way, but only when the
+  observed result equals the result the note says the task text gives.
 - Do not declare the task done or the fix verified unless the agent explicitly ran a test that says so; then state exactly which tests ran and their result.
 - Prefer merging claims that share the same subject and evidence into one sentence, only if nothing is lost.
 - user_messages are actual user inputs with source identities, not tool evidence. Consider follow-up constraints
@@ -1118,26 +1142,47 @@ class ClaimMaintenance:
         for row in checks:
             if not isinstance(row, dict) or (row.get("requirement_id"), row.get("claim_id")) not in allowed:
                 continue
-            if row.get("verdict") != "inconsistent" or not isinstance(row.get("incompatibility"), str):
-                continue
-            if not row["incompatibility"].strip():
-                continue
+            probe = row.get("distinguishing_input") if isinstance(row.get("distinguishing_input"), str) else ""
+            claim = records[row["claim_id"]]
+            edge = row.get("unchecked_edge") if isinstance(row.get("unchecked_edge"), str) else ""
             items = [item for item in row.get("items") or () if isinstance(item, dict)]
             quoted = next((item for item in items if item.get("relation") == "different"), None)
-            if quoted is None:
+            if (
+                row.get("verdict") == "inconsistent"
+                and isinstance(row.get("incompatibility"), str)
+                and row["incompatibility"].strip()
+                and quoted is not None
+            ):
+                requirement_quote, claim_quote = quoted.get("requirement_item"), quoted.get("claim_item")
+                verdict = "conflict"
+            elif (
+                row.get("verdict") == "reading_differs"
+                and claim.kind == "stated"
+                and claim.verdict == "unverified"
+                and probe.strip()  # Without a distinguishing input it is an unverified plan, not a fork.
+            ):
+                # V1: an unverified reading the agent itself stated is an open fork, not noise to drop.
+                requirement_quote, claim_quote = row.get("requirement_excerpt"), row.get("claim_excerpt")
+                verdict = "fork"
+            elif "->" in edge and claim.kind != "activity":
+                # V1.4: an edge input the task text fixes the result for, not yet run on the public entry point.
+                # The claim said nothing about it, so only the requirement side needs a quote.
+                requirement_quote, claim_quote, probe = row.get("requirement_excerpt"), "", edge
+                verdict = "boundary"
+            else:
                 continue
-            requirement_quote, claim_quote = quoted.get("requirement_item"), quoted.get("claim_item")
-            if not _source_quote(requirement_quote, texts[row["requirement_id"]]) or not _source_quote(
-                claim_quote, records[row["claim_id"]].statement
+            if not _source_quote(requirement_quote, texts[row["requirement_id"]]) or (
+                verdict != "boundary" and not _source_quote(claim_quote, claim.statement)
             ):
                 continue  # No fabricated or merely paraphrased source pair becomes a conflict.
             rows.append(
                 RequirementContradiction(
                     requirement_id=row["requirement_id"],
                     claim_id=row["claim_id"],
-                    verdict="conflict",
+                    verdict=verdict,
                     requirement_excerpt=requirement_quote,
                     claim_excerpt=claim_quote,
+                    distinguishing_input=probe,
                 )
             )
         if not rows:

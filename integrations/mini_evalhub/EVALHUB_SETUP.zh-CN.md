@@ -1,8 +1,8 @@
-# EvalHub 上传与配置
+# Compass v1.9 + mini-swe-agent 上传与配置
 
 ## 创建 Agent
 
-上传本目录的 `r5_mini_evalhub.py`，名称可填 `r5-mini-original`。平台会加载其中的 `R5MiniAgent`。
+上传本目录的 `r5_mini_evalhub_v1_9.py`，名称可填 `compass-v1.9-mini`。平台会加载其中的 `R5MiniAgent`。
 
 | 页面项目 | 填写方式 |
 |---|---|
@@ -19,19 +19,21 @@
 
 平台需向任务沙箱注入 `OPENAI_API_KEY` 和 `OPENAI_BASE_URL`。沿用当前可以运行的 OpenSandbox 服务配置。脚本从任务沙箱的当前目录识别代码仓库。如果该目录不是代码仓库，在 Agent 参数里增加 `workdir` 并填写实际绝对路径。
 
+v1.9 源码取自你提供的封存包，包 SHA256 为 `032bd720722e99ea3c783a8844aa15fac31e5c612203e18f1060c423e3923ac7`。Brief 默认预算为 15,000 字符，采用封存包的全文展示及预算回退逻辑。
+
 ## 实际执行流程
 
-1. 下载 `spine-se-lab/iCode-brief` 的 `codex/r5-mini-original-evalhub` 分支，核对交付参数里的 commit。
-2. 安装 Python 3.14.0 和锁定的 mini-swe-agent 2.4.6 依赖，检查原版 R5 的 72 个文件哈希。
+1. 下载 `spine-se-lab/iCode-brief` 的 `codex/compass-v1.9-mini-evalhub` 分支，核对交付参数里的 commit。
+2. 安装 Python 3.14.0 和锁定的 mini-swe-agent 2.4.6 依赖，检查封存 v1.9 的 72 个文件哈希。
 3. 读取平台下发的任务说明，让 mini 探索代码，再通过 `compass start` 建立要求和 Brief。
-4. 按原版 R5 流程修改代码、维护 Claims、执行提交检查。
+4. 按封存 v1.9 流程修改代码、维护 Claims、执行提交检查。
 5. 保存完整补丁，交给平台的任务 verifier 打分。
 
 主模型请求固定发送 `thinking={"type":"enabled"}`、`reasoning_effort="max"` 和 `max_tokens=64000`，最多 250 个主步骤。主模型 temperature、top_p、top_k 均不显式设置。维护模型沿用原版低开销配置，关闭 thinking，temperature 为 0。
 
 `adapter-events.jsonl` 可以核对脚本实际发送的参数。提供方是否接受并执行 max，需要结合平台网关的转发记录确认。
 
-## 本次对齐原四批的行为
+## 沿用已验证的重试和预算处理
 
 | 项目 | 当前设置 |
 |---|---|
@@ -56,4 +58,4 @@
 
 排查时先取 `source-identity.json`、`agent/run-status.json`、`agent/adapter-events.jsonl`、`submission.json`。需要查看具体推理过程时再取 `agent/trajectory.json` 和 `generation.log`。
 
-原版 R5 核心和 mini 版本已固定。本次通过 EvalHub 网关调用模型，在 OpenSandbox 中执行工具。历史四批使用的模型路由、任务环境及验收环境可能与平台有差异，通过率需以平台实际运行结果为准。
+封存 v1.9 源码和 mini 版本已固定。本次通过 EvalHub 网关调用模型，在 OpenSandbox 中执行工具。本地使用的模型路由、任务环境及验收环境可能与平台有差异，通过率需以平台实际运行结果为准。
