@@ -91,6 +91,17 @@ class Gateway(BaseHTTPRequestHandler):
                 }
                 finish = "tool_calls"
             else:
+                if self.server.side_failures:
+                    self.server.side_failures -= 1
+                    encoded = json.dumps(
+                        {"error": {"message": "synthetic transient failure", "type": "server_error"}}
+                    ).encode()
+                    self.send_response(503)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(encoded)))
+                    self.end_headers()
+                    self.wfile.write(encoded)
+                    return
                 self.server.side.append(body)
                 assert body["thinking"] == {"type": "disabled"}
                 assert body["temperature"] == 0
@@ -221,6 +232,7 @@ class RuntimeChecks(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="r5-mini-test-") as directory:
             server = ThreadingHTTPServer(("127.0.0.1", 0), Gateway)
             server.main, server.side, server.errors = [], [], []
+            server.side_failures = 1
             thread = threading.Thread(target=server.serve_forever)
             thread.start()
             try:
@@ -292,6 +304,10 @@ class RuntimeChecks(unittest.TestCase):
             raise
         assert len(server.main) == 8
         assert len(server.side) >= 2
+        assert server.side_failures == 0
+        events = [json.loads(line) for line in (root / "host/agent/adapter-events.jsonl").read_text().splitlines()]
+        assert not any(event["event"] == "maintenance_error" for event in events)
+        assert sum(event["event"] == "maintenance_request" for event in events) == len(server.side)
         assert context.n_input_tokens == (len(server.main) + len(server.side)) * 100
         assert context.n_output_tokens == (len(server.main) + len(server.side)) * 10
         assert context.n_cache_tokens == (len(server.main) + len(server.side)) * 50

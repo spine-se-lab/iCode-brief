@@ -145,8 +145,7 @@ class HarborEnvironment(LocalEnvironment):
 
     def execute(self, action, cwd="", *, timeout=None):
         seconds = min(300, max(1, int(timeout or self.config.timeout)))
-        exports = " ".join(f"{name}={shlex.quote(value)}" for name, value in self.config.env.items())
-        command = "env " + exports + " bash -lc " + shlex.quote(action.get("command", ""))
+        command = "bash -lc " + shlex.quote(action.get("command", ""))
         with socket.socket(socket.AF_UNIX) as connection:
             connection.settimeout(seconds + 30)
             connection.connect(self.socket_path)
@@ -154,9 +153,11 @@ class HarborEnvironment(LocalEnvironment):
             connection.sendall((json.dumps(request) + "\n").encode())
             with connection.makefile("rb") as stream:
                 result = json.loads(stream.readline())
-        if result.get("error"):
-            raise RuntimeError("Harbor execution " + result["error"])
-        output = {"output": result["output"], "returncode": result["return_code"], "exception_info": ""}
+        output = {
+            "output": result["output"],
+            "returncode": result["return_code"],
+            "exception_info": result.get("exception_info", ""),
+        }
         self._check_finished(output)
         return output
 
@@ -182,7 +183,7 @@ def main(settings_path):
         key=key,
         audit=audit,
     )
-    env = HarborEnvironment(settings, native["environment"]["env"])
+    env = HarborEnvironment(settings, {})
     # Keep the frozen side-call prompts, validation, budgets and meter. Only map
     # the OpenRouter transport controls onto the platform's OpenAI-compatible API.
     import litellm
@@ -192,7 +193,6 @@ def main(settings_path):
     async def gateway_completion(**kwargs):
         kwargs["api_base"] = settings["base_url"]
         kwargs["api_key"] = key
-        kwargs["num_retries"] = 0  # The frozen core already owns bounded side-call retries.
         reasoning = (kwargs.pop("extra_body", None) or {}).get("reasoning", {})
         if reasoning != {"enabled": False}:
             raise RuntimeError("Unexpected frozen maintenance reasoning policy")
@@ -208,7 +208,8 @@ def main(settings_path):
             reply = await completion(**kwargs)
         except Exception as error:
             audit.write("maintenance_error", error_type=type(error).__name__)
-            raise RuntimeError("Maintenance transport " + type(error).__name__) from None
+            # Preserve status_code so the frozen core can retry transient provider errors.
+            raise
         audit.response("maintenance", reply.model_dump())
         return reply
 
@@ -244,7 +245,7 @@ def main(settings_path):
             Path(settings["task_path"]).read_text(),
             **dict(zip(("system", "release", "version", "machine"), lines, strict=True)),
         )
-        return 0 if result.get("exit_status") in {"Submitted", "LimitsExceeded"} else 1
+        return 0 if result.get("exit_status") == "Submitted" else 1
     finally:
         litellm.acompletion = completion
         status = {

@@ -140,11 +140,37 @@ class Checks(unittest.IsolatedAsyncioTestCase):
             "import json,sys; from pathlib import Path; s=json.loads(Path(sys.argv[1]).read_text()); "
             "d=Path(s['agent_dir']); d.mkdir(); "
             "(d/'adapter-events.jsonl').write_text(json.dumps({'event':'budget_exhausted'})+'\\n'); "
+            "(d/'run-status.json').write_text(json.dumps({'exit_status':'LimitsExceeded'})); "
             "raise SystemExit(1)"
         )
         await self.solver.run("test", self.environment, self.context)
         self.assertTrue(self.context.metadata["r5_mini"]["budget_exhausted"])
         self.assertEqual(self.context.metadata["r5_mini"]["generation_exit_code"], 1)
+
+    async def test_budget_marker_does_not_hide_runtime_failure(self):
+        self.child(
+            "import json,sys; from pathlib import Path; s=json.loads(Path(sys.argv[1]).read_text()); "
+            "d=Path(s['agent_dir']); d.mkdir(); "
+            "(d/'adapter-events.jsonl').write_text(json.dumps({'event':'budget_exhausted'})+'\\n'); "
+            "raise SystemExit(7)"
+        )
+        with self.assertRaisesRegex(RuntimeError, "code 7"):
+            await self.solver.run("test", self.environment, self.context)
+
+    async def test_wall_timeout_preserves_candidate_and_records_124_separately(self):
+        self.child("import time; time.sleep(60)")
+        original_wait_for = asyncio.wait_for
+
+        async def short_generation_wait(awaitable, timeout):
+            return await original_wait_for(awaitable, 0.05 if timeout == 11400 else timeout)
+
+        with patch.object(agent.asyncio, "wait_for", side_effect=short_generation_wait):
+            await self.solver.run("test", self.environment, self.context)
+        metadata = self.context.metadata["r5_mini"]
+        self.assertEqual(metadata["generation_exit_code"], 124)
+        self.assertEqual(metadata["generation_process_exit_code"], -15)
+        self.assertTrue(metadata["wall_timeout"])
+        self.assertFalse(metadata["budget_exhausted"])
 
     async def test_collection_downloads_only_existing_allowlisted_logs(self):
         Path(self.solver.logs_dir).mkdir(exist_ok=True)
@@ -234,8 +260,13 @@ class Checks(unittest.IsolatedAsyncioTestCase):
         with patch.dict(helper.os.environ, {"OPENAI_API_KEY": "synthetic-offline-key"}):
             result = await helper.Environment().exec('test -z "${OPENAI_API_KEY:-}"')
             self.assertEqual(result.return_code, 0)
-        result = await helper.Environment().exec("sleep 60", timeout_sec=0.05)
-        self.assertEqual(result.return_code, 124)
+        result = await helper.Environment().exec("printf before-timeout; sleep 60", timeout_sec=0.1)
+        self.assertEqual(result.return_code, -1)
+        self.assertEqual(result.stdout, "before-timeout")
+        self.assertIn("timed out", result.exception_info)
+        result = await helper.Environment().exec("printf first; printf second >&2; printf third")
+        self.assertEqual(result.stdout, "firstsecondthird")
+        self.assertEqual(result.stderr, "")
 
     def test_missing_gateway_fails_without_reading_runner_credentials(self):
         spec = importlib.util.spec_from_file_location("sandbox_helper", ROOT / "sandbox_agent.py")

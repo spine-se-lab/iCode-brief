@@ -57,23 +57,27 @@ class Environment:
             cwd=cwd,
             env=env,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
             start_new_session=True,
         )
+        communication = asyncio.create_task(process.communicate())
+        timed_out = False
         try:
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout_sec)
-            return SimpleNamespace(
-                return_code=process.returncode,
-                stdout=stdout.decode(errors="replace"),
-                stderr=stderr.decode(errors="replace"),
-            )
+            await asyncio.wait_for(asyncio.shield(communication), timeout_sec)
         except TimeoutError:
-            return SimpleNamespace(return_code=124, stdout="", stderr="Command timed out")
+            timed_out = True
         finally:
-            if process.returncode is None:
+            if not communication.done():
                 with contextlib.suppress(ProcessLookupError):
                     os.killpg(process.pid, signal.SIGKILL)
-                await process.wait()
+            await process.wait()
+            stdout, _ = await communication
+        return SimpleNamespace(
+            return_code=-1 if timed_out else process.returncode,
+            stdout=stdout.decode(errors="replace"),
+            stderr="",
+            exception_info="Command timed out" if timed_out else "",
+        )
 
 
 def solver(module):

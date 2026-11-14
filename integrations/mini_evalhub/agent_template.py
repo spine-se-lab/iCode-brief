@@ -23,7 +23,7 @@ MINI_VERSION = "2.4.6"
 R5_ARCHIVE = "62c304ae6315ffb1c977def04b77fb9c552ac75ceb533fd249c2b0180818d257"
 
 
-async def stop_process(process):
+async def stop_process(process, grace_seconds=10):
     if process.returncode is not None:
         return
     try:
@@ -31,7 +31,7 @@ async def stop_process(process):
     except ProcessLookupError:
         return
     try:
-        await asyncio.wait_for(process.wait(), 10)
+        await asyncio.wait_for(process.wait(), grace_seconds)
     except TimeoutError:
         with contextlib.suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGKILL)
@@ -119,7 +119,7 @@ class R5MiniAgent(BaseAgent):
         return "r5-mini-original"
 
     def version(self):
-        return "r5-original-mini-2.4.6-git"
+        return "r5-original-mini-2.4.6-git-v2"
 
     async def setup(self, environment):
         if self.execution_mode == "sandbox":
@@ -232,7 +232,7 @@ class R5MiniAgent(BaseAgent):
         launch = asyncio.create_task(self._sandbox_command(environment, "start", 30))
         try:
             await asyncio.shield(launch)
-            deadline = asyncio.get_running_loop().time() + 11460
+            deadline = asyncio.get_running_loop().time() + 11800
             failed_polls = 0
             while asyncio.get_running_loop().time() < deadline:
                 state = await self._sandbox_command(environment, "wait", 30)
@@ -446,11 +446,15 @@ class R5MiniAgent(BaseAgent):
                         timeout_sec=min(300, max(1, int(request["timeout_sec"]))),
                     )
                     output = (result.stdout or "") + (result.stderr or "")
-                    response = {"return_code": result.return_code, "output": output}
+                    response = {
+                        "return_code": result.return_code,
+                        "output": output,
+                        "exception_info": getattr(result, "exception_info", ""),
+                    }
                 except TimeoutError:
-                    response = {"return_code": 124, "output": "Command timed out"}
+                    response = {"return_code": -1, "output": "", "exception_info": "Command timed out"}
                 except Exception as error:
-                    response = {"error": type(error).__name__}
+                    response = {"return_code": -1, "output": "", "exception_info": type(error).__name__}
                 try:
                     writer.write((json.dumps(response) + "\n").encode())
                     await writer.drain()
@@ -510,14 +514,13 @@ class R5MiniAgent(BaseAgent):
                 wall_timeout = True
             finally:
                 if process is not None:
-                    await stop_process(process)
+                    await stop_process(process, grace_seconds=30)
                     return_code = process.returncode
                 server.close()
                 await server.wait_closed()
                 # Let the bounded sandbox command settle before Harbor starts verification.
                 await asyncio.gather(*list(pending), return_exceptions=True)
                 counts, responses, exhausted = observed_usage(events_path)
-                exhausted |= wall_timeout
                 for name, value in counts.items():
                     setattr(context, name, value)
                 context.metadata = {
@@ -529,18 +532,26 @@ class R5MiniAgent(BaseAgent):
                         "source": json.loads((logs / "source-identity.json").read_text()),
                         "platform_model_name": self.model_name,
                         "api_model": model,
-                        "generation_exit_code": return_code,
+                        "generation_exit_code": 124 if wall_timeout else return_code,
+                        "generation_process_exit_code": return_code,
                         "budget_exhausted": exhausted,
                         "wall_timeout": wall_timeout,
                         "responses": responses,
                         "transport": "harbor.environment.exec",
                     },
                 }
+            status = {}
             status_path = logs / "agent/run-status.json"
             if status_path.exists():
                 status = json.loads(status_path.read_text())
                 context.metadata["r5_mini"]["result"] = status
-            if return_code and not exhausted:
+            # Historical generation and grading are separate. Preserve nonzero
+            # terminal codes while allowing the retained candidate to be graded.
+            candidate_terminal = return_code == 1 and status.get("exit_status") in {
+                "LimitsExceeded",
+                "RepeatedFormatError",
+            }
+            if return_code and not (candidate_terminal or wall_timeout):
                 raise RuntimeError(f"R5/mini-swe-agent exited with code {return_code}; see generation.log")
 
 
