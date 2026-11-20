@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 
 
 _DEFAULT_PROFILE = msg("tui.agent_config.basic.default_profile", fallback="(default)")
+_COMPASS = msg("tui.agent_config.basic.compass", fallback="Compass")
 _USE_ACTIVE_MODEL_PROFILE = msg(
     "tui.agent_config.basic.use_active_model_profile",
     fallback="Use active model profile (Current: {name})",
@@ -347,6 +348,16 @@ class BasicConfigPanel(VerticalScroll):
             header.display = not is_acp
             yield header
 
+        compass = Checkbox(
+            render_str(localizer, _COMPASS.bind()),
+            value=p.metadata.get("compass_enabled") is True,
+            id="bc-compass",
+            classes="bc-compass-section",
+        )
+        compass.display = not is_acp
+        compass.disabled = self._read_only
+        yield compass
+
         mp_list = self._available_model_profiles()
         options = [(Text(mp.name), mp.id) for mp in mp_list]
         # No model profiles configured → nothing to override with; lock
@@ -389,7 +400,7 @@ class BasicConfigPanel(VerticalScroll):
             sub_agent_only.disabled = self._read_only
         # An ACP agent runs on its external process, not a chrys model
         # profile — hide the whole section, headers included.
-        for widget in self.query(".bc-model-section"):
+        for widget in self.query(".bc-model-section, .bc-compass-section"):
             widget.display = not is_acp
 
     @on(Checkbox.Changed, "#bc-model-use-active")
@@ -445,7 +456,11 @@ class BasicConfigPanel(VerticalScroll):
             model_profile_id = "" if selected is Select.NULL else str(selected)
         else:
             model_profile_id = seed_model_profile_id
+        compass_enabled = self._profile.metadata.get("compass_enabled") is True
+        with contextlib.suppress(NoMatches):
+            compass_enabled = self.query_one("#bc-compass", Checkbox).value
         return {
+            "compass_enabled": bool(compass_enabled) and agent_type != "acp",
             "name": name,
             "display_name": display_name,
             "description": description,

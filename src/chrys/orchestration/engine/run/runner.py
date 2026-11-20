@@ -407,7 +407,12 @@ class TurnRunner:
         """
         while True:
             bindings = self._current.require_loaded().bindings
-            outcome = await bindings.backend.run(request)
+            # Compass is optional; legacy executors keep the native backend contract.
+            compass = getattr(bindings, "compass", None)
+            if compass is None:
+                outcome = await bindings.backend.run(request)
+            else:
+                outcome = await compass.run(request)
             bindings.record_outcome(outcome)
             # The pass gave its output up for the steer: settle it so, even when an owner closing took over its cause.
             if not isinstance(outcome, Aborted) or not bindings.state.steered:

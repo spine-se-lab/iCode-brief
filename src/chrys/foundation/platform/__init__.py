@@ -132,10 +132,16 @@ def _detect_os_version(system: str) -> str:
 def conventional_config_dir() -> Path:
     """``~/.chrys``, or ``%APPDATA%/chrys`` on Windows, as the user knows it — possibly a link.
 
+    ``CHRYS_CONFIG_DIR`` optionally selects an absolute process-start root.
     Files are opened through :attr:`PlatformInfo.config_dir`, which is this with
     its links followed; only a command acting on the entry itself, such as
     removing it, wants this name.
     """
+    if override := os.environ.get("CHRYS_CONFIG_DIR", "").strip():
+        root = Path(override).expanduser()
+        if not root.is_absolute():
+            raise ValueError("CHRYS_CONFIG_DIR must be an absolute path")
+        return root
     if platform.system().lower() == "windows":
         return Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming")) / "chrys"
     return Path.home() / ".chrys"

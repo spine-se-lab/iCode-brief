@@ -258,3 +258,17 @@ iCode reports and ignores disallowed project keys, values that exceed override r
 2. Check for a higher-priority source. Deleting a key from YAML does not clear values from other sources.
 3. For project settings, confirm that loading is enabled in user settings and that the key and override direction meet the restrictions.
 4. Check the messages iCode reports at startup. For how invalid values and unknown keys are handled, see [Value syntax and invalid values](#value-syntax-and-invalid-values); for directory-related messages, check [File locations and format](#file-locations-and-format).
+
+## Isolated configuration directory
+
+Set `CHRYS_CONFIG_DIR` to an absolute directory before starting iCode to use a separate configuration/data root. A relative value is rejected; an absent or blank value preserves the default `~/.chrys` (or `%APPDATA%/chrys`). This is a process-start location, not a live-reload setting. It does not sandbox repository tools or change the working directory. The opt-in Compass checkout entry point uses it; see [Compass layer](../../compass/README.md).
+
+## Compass in the main session
+
+Open `/agents basic`, enable **Compass**, and save. It is off by default and follows the model selected by iCode. The UI entry uses the existing configuration directory; it does not set `CHRYS_CONFIG_DIR`. It adds exploration, Brief maintenance and bounded submission checks to the main session. See [Compass UI review](../../compass/TUI_REVIEW.md).
+
+Compass keeps the native `llm.retry.max_transient` setting and retry safety checks. Retried main-request middleware attempts consume its existing task budget; retry waits consume the same wall-clock limit. A failed or incomplete response does not confirm a Compass Brief delivery. SDK-internal HTTP retries remain governed by the selected model profile.
+
+The switch belongs to the selected Agent, not the whole application. A UI turn that never attempts Compass handoff or an edit recognized by its guard may answer normally without a Brief. It is logged as Compass not started, not a successful Compass treatment. A failed handoff or an edit attempt without a consumed Brief still fails validation. The dedicated evaluation CLI retains strict validation.
+
+An active Compass task continues across user turns; follow-ups retain its original requirements, evidence and remaining budget. Use `/new` for a different task. Added or changed requirements use the UI-only `update_compass_requirements` tool; selection of this tool remains model-driven. UI tasks have no Compass wall deadline and retain a shared 250-attempt cap. Native request timeouts and cancellation remain unchanged. Headless evaluation retains its 11,400-second deadline. See [multi-turn behavior and review](../../compass/MULTITURN_REVIEW.md).

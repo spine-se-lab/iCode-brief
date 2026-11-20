@@ -140,7 +140,7 @@ ARCHITECTURE_RULES = (
         ("src/chrys/app/tui/**", "src/chrys/foundation/i18n/**"),
     ),
     TestRule("tests/architecture/test_hygiene_lazy_imports.py", ("src/chrys/**",)),
-    TestRule("tests/architecture/test_hygiene_llm_client_owners.py", ("src/chrys/**",)),
+    TestRule("tests/architecture/test_hygiene_llm_client_owners.py", ("src/chrys/**", "src/compass/**")),
     TestRule("tests/architecture/test_hygiene_pillow_formats.py", ("src/chrys/**",)),
     TestRule("tests/architecture/test_hygiene_reminder_sources.py", ("src/chrys/**",)),
     TestRule("tests/architecture/test_hygiene_session_surface.py"),
@@ -206,6 +206,7 @@ _LLM_CLIENT_SOURCES = (
 # those dependency edges explicit: subprocess fixtures, filesystem scanners,
 # and import-every-module checks are invisible to the AST import graph.
 REGULAR_RULES = (
+    TestRule("tests/integration/compass", ("src/compass/**",)),
     TestRule("tests/app/tui/support/test_clipboard_process.py", ("src/chrys/foundation/platform/clipboard_worker.py",)),
     TestRule("tests/service/mcp/test_cache_e2e.py", ("tests/service/mcp/mcp_cache_probe_server.py",)),
     TestRule("tests/orchestration/engine/build/test_initialization.py", ("tests/support/mcp_reload_probe_server.py",)),

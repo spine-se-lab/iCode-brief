@@ -35,6 +35,7 @@ _COPY_AS_DICT_KEYS = (
 )
 _COPY_AS_LIST_KEYS = ("agent_profile_switches",)
 _PASS_THROUGH_OPTIONAL_KEYS = (
+    "compass_interactive",  # Opt-in main-turn ledger and budget, retained on session restore.
     "chrys_mutations",
     "chrys_workspace_baseline",
     # Session todo list — truthy filter drops empty lists (empty ≡ absent).

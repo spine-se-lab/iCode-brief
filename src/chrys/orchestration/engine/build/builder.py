@@ -393,6 +393,7 @@ async def build_agent(
         if profile.acp is not None:
             raise ValueError(f"ACP profile {profile.name!r} is sub-agent-only and cannot be launched as the main agent")
 
+        compass_enabled = profile.metadata.get("compass_enabled") is True
         transient_retries = settings.effective_max_transient_retries()
 
         if turn_context is None:
@@ -834,6 +835,14 @@ async def build_agent(
 
         # Capture tool/skill names
         await _progress(AGENT_LOAD_PHASE_AGENT, "Finalizing agent", status=AGENT_LOAD_STATUS_RUNNING)
+        compass = None
+        if compass_enabled:
+            from compass.adapters.icode.interactive import InteractiveCompass
+
+            compass = InteractiveCompass(active_profile, runtime, effective_session_dir, on_side_call_usage)
+            await prepared.own_or_release(compass.aclose)
+            compass.add_tools(tools, tool_build)
+
         tool_names = [t.name for t in tools]
         tool_kinds = {t.name: k for t in tools if (k := get_tool_kind(t))}
         context_tool_names = ctx.context_mgmt_provider.tool_names if ctx.context_mgmt_provider is not None else []
@@ -1072,6 +1081,10 @@ async def build_agent(
             shows_answer_text=shows_answer_text,
             extension_hooks=extensions.tool_hooks,
         )
+
+        if compass is not None:
+            compass.bind(agent, executor, injection)
+            executor.compass = compass
 
         return AgentBuildResult(
             prepared=prepared,

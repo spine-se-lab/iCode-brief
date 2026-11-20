@@ -116,6 +116,7 @@ if TYPE_CHECKING:
     from chrys.service.mutations.tracker import MutationTracker
     from chrys.service.tools.background import BackgroundTasks
     from chrys.service.trajectory.preparation import PreparationTrace
+    from compass.adapters.icode.interactive import InteractiveCompass
 
 
 logger = logging.getLogger(__name__)
@@ -155,6 +156,9 @@ class TurnBindings:
     Resource references here are borrowed from the installed PreparedAgent owner.
     """
 
+    # Optional main-turn policy; absent for ordinary iCode sessions.
+    compass: InteractiveCompass | None = None
+
     # Resilience: retry on transient network errors (proxy drops,
     # connection resets, timeouts).  Applies to both blocking and
     # streaming paths.  The classifier lives in :mod:`chrys.foundation.errors`
@@ -175,6 +179,20 @@ class TurnBindings:
     _projector: ContentProjector | None = None
     # The wait the last retry notice announced, until the sleep after it ends.
     _retry_wait: _RetryWait | None = None
+
+    async def report_policy_failure(self, request: RunRequest, error: Exception) -> None:
+        """Report caller validation after backend.run has closed its pass emitter."""
+        self.state.run_failed = True
+        self.state.last_error = clean_error_message(error)
+        await self._invocation_publishers.bind(request.origin).publish(
+            Error(
+                code="executor_error",
+                message=self.state.last_error,
+                recoverable=True,
+                session_id=self._session_id,
+                facts=failure_facts(error),
+            )
+        )
 
     def __init__(
         self,

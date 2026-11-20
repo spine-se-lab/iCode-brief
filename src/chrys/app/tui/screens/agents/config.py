@@ -1681,6 +1681,10 @@ class AgentsConfigScreen(BaseDialog[str]):
             updated.name = basic["name"]
         updated.display_name = basic["display_name"]
         updated.description = basic["description"]
+        if basic.get("compass_enabled") is True and basic.get("agent_type") != "acp":
+            updated.metadata["compass_enabled"] = True
+        else:
+            updated.metadata.pop("compass_enabled", None)
         if basic.get("agent_type") == "acp":
             updated.acp = updated.acp or AcpAgentConfig()
             updated.sub_agent_only = True
