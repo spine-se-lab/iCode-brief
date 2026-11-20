@@ -11,22 +11,22 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast
 from chrys.foundation.models.history_markers import HistoryMarkerKind
 from chrys.foundation.models.turns import current_turn_start, is_continuation_message, is_injected_message, opens_turn
 from chrys.foundation.tool_kinds import get_tool_kind
+from chrys.foundation.trajectory.keys import ensure_owner_only_directory
 from chrys.kernel import ChatResponse, Message
 from chrys.kernel.middleware import ChatContext, ChatMiddleware, FunctionMiddleware
 from chrys.orchestration.invoker.contracts import Failed, FailureCategory, FailureDisposition, Ok, RunIntent, StopCause
-from chrys.service.extensions import bind_extension
 from compass.core.briefing.policy import DeliveryMark
 from compass.provenance import SOURCE_ROOT, dump, sha, source_constants
 from compass.runtime.budget import MAX_CALLS
-from compass.runtime.prompts import INTERACTIVE_WORKFLOW, REQUIREMENTS_UPDATE
-from compass.runtime.records import InvalidCompassRun
+from compass.runtime.prompts import REQUIREMENTS_UPDATE
+from compass.runtime.records import InvalidCompassRun, RunArtifactStore
 from compass.runtime.run_state import RunState, WorkflowFlags
 from compass.runtime.workflow import prepare_submission_check, require_handoff
 
 from .interactive_model import SelectedModel
-from .middleware import BriefChat, ExplorationGuard, PendingBrief, item_identity
+from .middleware import BriefChat, PendingBrief, item_identity
+from .scope import invocation_scope
 from .storage import Artifacts
-from .tools import make_extension
 
 if TYPE_CHECKING:
     from chrys.foundation.models.session_env import SessionEnvironment
@@ -35,9 +35,8 @@ if TYPE_CHECKING:
     from chrys.orchestration.invoker.contracts import InvocationOutcome, RunRequest
     from chrys.service.agent_middleware.injection import InjectionMiddleware
     from chrys.service.profiles.models.schema import ModelProfile
-    from chrys.service.tools.packs import ToolBuild
     from compass.core.session import CompassSession
-    from compass.ports import MaintenanceModel, SessionArtifactStore
+    from compass.ports import MaintenanceModel
 
 
 class UserInput(TypedDict):
@@ -70,7 +69,7 @@ class InteractiveRunState(RunState):
         constants: dict[str, str],
         model: MaintenanceModel | None = None,
         *,
-        artifacts: SessionArtifactStore,
+        artifacts: RunArtifactStore,
         state: Callable[[], dict[str, Any]],
         invocation_id: str,
         task_id: str | None = None,
@@ -229,12 +228,13 @@ class InteractiveCompass:
     ) -> None:
         if session_dir is None:
             raise ValueError("Compass requires a persistent session directory")
-        self.directory = Path(session_dir) / "compass"
+        # The builder obtains this root from Extension ToolContext.session_data_dir.
+        self.directory = Path(session_dir)
         self.cwd = Path(runtime.cwd)
         self.model = SelectedModel(profile, report_usage)
         self.owner: InteractiveRunState | None = None
         self.chat: InteractiveBriefChat | None = None
-        self.workflow_id: str | None = None
+        self.invocation_id: str | None = None
         self.tools: list[FunctionTool] = []
         self.constants = source_constants(SOURCE_ROOT)
 
@@ -279,13 +279,6 @@ class InteractiveCompass:
         owner.save()
         return "Requirements updated from user inputs. Read the next Brief before editing."
 
-    def add_tools(self, tools: list[FunctionTool], build: ToolBuild) -> None:
-        bound = bind_extension("compass", make_extension(self, interactive=True), build)
-        if {t.name for t in tools}.intersection(t.name for t in bound.tools):
-            raise ValueError("Compass tool name collision")
-        tools.extend(bound.tools)
-        self.tools = tools
-
     def bind(self, agent: Agent, bindings: TurnBindings, injection: InjectionMiddleware) -> None:
         self.agent = agent
         self.bindings = bindings
@@ -294,8 +287,6 @@ class InteractiveCompass:
     def cancel_pending(self) -> None:
         if self.chat is not None and self.chat.pending:
             self.injection.cancel("compass:" + sha(self.chat.pending.text))
-        if self.workflow_id is not None:
-            self.injection.cancel(self.workflow_id)
 
     async def begin(self, request: RunRequest) -> None:
         identity = request.origin.invocation_id
@@ -316,7 +307,7 @@ class InteractiveCompass:
             self.cancel_pending()
             task = saved["task"] if resume else "\n".join(m.text for m in request.messages if user_input(m))
             directory = self.directory / sha(task_id)[:24]
-            directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+            ensure_owner_only_directory(directory)
             owner = InteractiveRunState(
                 task,
                 self.cwd,
@@ -330,6 +321,8 @@ class InteractiveCompass:
                 session_id=session_id,
             )
             if resume:
+                # Frozen core copies only referenced, verified raw evidence into
+                # the new root; the old audit directory remains untouched.
                 await owner.restore(saved)
             self.owner = owner
         owner = self.owner
@@ -346,16 +339,14 @@ class InteractiveCompass:
             )
             owner.record_input(entry_id, message.text, initial=initial)
         owner.tool_kinds = {tool.name: get_tool_kind(tool) for tool in self.tools}
-        workflow_id = "compass-workflow:" + sha(identity)
-        if self.chat is None or self.chat.owner is not owner or self.workflow_id != workflow_id:
+        if self.chat is None or self.chat.owner is not owner or self.invocation_id != identity:
             self.cancel_pending()
             # Native LoadedAgent assembly supplies a sequence, preserving host order.
             middleware = cast(Sequence[ChatMiddleware | FunctionMiddleware], self.agent.middleware or [])
-            chain = [item for item in middleware if not isinstance(item, (BriefChat, ExplorationGuard))]
+            chain = [item for item in middleware if not isinstance(item, BriefChat)]
             self.chat = InteractiveBriefChat(owner, self.injection, allow_stream=True)
-            self.agent.middleware = [ExplorationGuard(owner), self.chat, *chain]
-            self.workflow_id = workflow_id
-            self.injection.queue(INTERACTIVE_WORKFLOW, injection_id=self.workflow_id)
+            self.agent.middleware = [self.chat, *chain]
+            self.invocation_id = identity
         owner.save()
 
     async def validate_handoff(self, request: RunRequest, outcome: Ok) -> Ok | Failed:
@@ -382,50 +373,51 @@ class InteractiveCompass:
         return outcome
 
     async def run(self, request: RunRequest) -> InvocationOutcome:
-        await self.begin(request)
-        owner = self.owner
-        chat = self.chat
-        if owner is None or chat is None:
-            raise RuntimeError("Compass turn not started")
-        try:
-            outcome = await self.bindings.backend.run(request)
-            if not isinstance(outcome, Ok):
-                return outcome
-            if not owner.flags.started and not owner.flags.handoff_requested and not owner.flags.write_requested:
-                owner.audit("compass_skipped", reason="not_started_no_edit_attempt")
-                return outcome
-            outcome = await self.validate_handoff(request, outcome)
-            if not isinstance(outcome, Ok):
-                return outcome
-            check = prepare_submission_check(owner)
-            if check is not None:
-                owner.check_invocation_id = owner.invocation_id
-                owner.save()
-                held, prompt = check
-                if held:
-                    outcome = await self.bindings.backend.run(
-                        replace(
-                            request,
-                            intent=RunIntent.CONTINUE,
-                            continuation=None,
-                            messages=[Message("user", [prompt])],
-                        )
-                    )
-            if isinstance(outcome, Ok):
+        with invocation_scope(self, request.origin):
+            await self.begin(request)
+            owner = self.owner
+            chat = self.chat
+            if owner is None or chat is None:
+                raise RuntimeError("Compass turn not started")
+            try:
+                outcome = await self.bindings.backend.run(request)
+                if not isinstance(outcome, Ok):
+                    return outcome
+                if not owner.flags.started and not owner.flags.handoff_requested and not owner.flags.write_requested:
+                    owner.audit("compass_skipped", reason="not_started_no_edit_attempt")
+                    return outcome
                 outcome = await self.validate_handoff(request, outcome)
-            if isinstance(outcome, Ok) and owner.calls < MAX_CALLS:
-                await owner.core.maintain(phase="icode", stage_end=True)
-            return outcome
-        finally:
-            # Native retry owns the immutable payload until backend.run exits.
-            # Afterwards a manual retry may regenerate an unconfirmed Brief;
-            # do not leave a consumed draft blocking its next injection.
-            if chat.pending is not None:
-                self.injection.cancel("compass:" + sha(chat.pending.text))
-                chat.pending = None
-                chat.observed = None
-            await owner.core.before_fork()
-            owner.save()
+                if not isinstance(outcome, Ok):
+                    return outcome
+                check = prepare_submission_check(owner)
+                if check is not None:
+                    owner.check_invocation_id = owner.invocation_id
+                    owner.save()
+                    held, prompt = check
+                    if held:
+                        outcome = await self.bindings.backend.run(
+                            replace(
+                                request,
+                                intent=RunIntent.CONTINUE,
+                                continuation=None,
+                                messages=[Message("user", [prompt])],
+                            )
+                        )
+                if isinstance(outcome, Ok):
+                    outcome = await self.validate_handoff(request, outcome)
+                if isinstance(outcome, Ok) and owner.calls < MAX_CALLS:
+                    await owner.core.maintain(phase="icode", stage_end=True)
+                return outcome
+            finally:
+                # Native retry owns the immutable payload until backend.run exits.
+                # Afterwards a manual retry may regenerate an unconfirmed Brief;
+                # do not leave a consumed draft blocking its next injection.
+                if chat.pending is not None:
+                    self.injection.cancel("compass:" + sha(chat.pending.text))
+                    chat.pending = None
+                    chat.observed = None
+                await owner.core.before_fork()
+                owner.save()
 
     async def aclose(self) -> None:
         try:

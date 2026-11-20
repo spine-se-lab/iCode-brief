@@ -1,3 +1,5 @@
+> 历史审核记录：2026-11-20 已移除本文的 Basic 专用开关，改为 Tools → Extensions 的 `compass`。当前操作方式与剩余宿主改动见 [Extension 接入审核](EXTENSION_MIGRATION_REVIEW.md)。
+
 # Compass 界面接入审核
 
 最新修订：界面取消总时间上限、保留 250 次主请求；修复原生执行接口兼容性。当前验证和历史记录的区别见 [宿主回归修复审核](HOST_REGRESSION_REVIEW.md)。

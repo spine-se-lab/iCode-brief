@@ -2200,12 +2200,6 @@ msgstr "将现有配置切换为外部 ACP 会清除其模型驱动的提示词�
 msgid "tui.agent_config.basic.built_in"
 msgstr "内置"
 
-#. English: Compass
-#. chrys-meta={"fingerprint":"9fe3d41e12d83bc5a223e89c4845118fe190f8bb8d793f55e9fb4e263c52a69f","multiline":false,"placeholders":[]}
-#: src/chrys/app/tui/screens/agents/panels/basic.py
-msgid "tui.agent_config.basic.compass"
-msgstr "Compass"
-
 #. English: (default)
 #. chrys-meta={"fingerprint":"291444db6f292cf9de2073df0c83c49344cc461805fe191591f1d9c936d35157","multiline":false,"placeholders":[]}
 #: src/chrys/app/tui/screens/agents/panels/basic.py
@@ -17682,6 +17676,9 @@ msgstr "提示已被钩子阻止。"
 
 #~ msgid "tui.agent_config.already_default"
 #~ msgstr "智能体已使用系统默认设置"
+
+#~ msgid "tui.agent_config.basic.compass"
+#~ msgstr "Compass"
 
 #~ msgid "tui.agent_config.button.reset"
 #~ msgstr "重置"

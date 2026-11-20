@@ -111,7 +111,7 @@ async def host_for(tmp_path, monkeypatch, responses, *, stream=False, failures=(
     models.get("mock-profile").chat_options = json.dumps({"store": stored})
     models.register(ModelProfile(id="second", name="Second", provider="mock", model_id="second", stream=stream))
     profile = _make_profile()
-    profile.metadata["compass_enabled"] = True
+    profile.extensions.append("compass")
     host = ChrysSessionHost(
         profile_name=profile.name,
         settings=settings,

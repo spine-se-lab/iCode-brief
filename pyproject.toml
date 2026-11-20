@@ -100,6 +100,9 @@ cache-keys = [
 #rich = { path = "../rich", editable = true }
 #textual = { path = "../textual", editable = true }
 
+[project.entry-points."chrys.extensions"]
+compass = "compass.adapters.icode.tools:extension"
+
 [build-system]
 # Babel compiles the zh-Hans MO in hatch_build.py; bump it with the dev group's pin.
 requires = ["hatchling", "babel==2.18.0"]

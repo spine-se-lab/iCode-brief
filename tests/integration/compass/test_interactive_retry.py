@@ -89,7 +89,7 @@ async def setup_host(
     model.stream = stream
     model.chat_options = json.dumps({"store": stored})
     profile = _make_profile(approval_default="auto")
-    profile.metadata["compass_enabled"] = True
+    profile.extensions.append("compass")
     host = ChrysSessionHost(
         profile_name=profile.name,
         settings=settings,

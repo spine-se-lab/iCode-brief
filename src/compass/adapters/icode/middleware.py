@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
-from typing import cast
+from typing import Any, Literal, cast
 
 from pydantic import BaseModel
 
@@ -100,22 +100,38 @@ async def capture(owner: RunState, messages: Sequence[Message], *, maintain: boo
                 )
 
 
+def check_edit(owner: RunState, *, name: str, kind: str | None, arguments: dict[str, Any]) -> str | None:
+    """Shared policy; native hooks may recheck approval-edited arguments.
+
+    Recording a write attempt is monotonic and safe to repeat. It must not
+    spend model budget or acknowledge a Brief, even on approval rechecks.
+    """
+    changes = kind == "filesystem.write" or (
+        kind == "shell" and classify_shell(arguments.get("command", "")) == "change"
+    )
+    if changes:
+        owner.record_write_attempt()
+    if changes and not owner.flags.handoff_seen:
+        owner.audit("write_held", tool=name)
+        return "Not executed. Explore, call start_compass_brief alone, and read the Brief before editing."
+    return None
+
+
 class ExplorationGuard(FunctionMiddleware):
+    """Dedicated evaluation adapter; normal sessions use Extension.before_tool."""
+
     def __init__(self, owner: RunState) -> None:
         self.owner = owner
 
     async def process(self, context: FunctionInvocationContext, call_next: Callable[[], Awaitable[None]]) -> None:
-        kind = get_tool_kind(context.function)
         args = context.arguments
         args = cast(BaseModel, args).model_dump() if hasattr(args, "model_dump") else dict(args)
-        command = args.get("command", "")
-        changes = kind == "filesystem.write" or (kind == "shell" and classify_shell(command) == "change")
-        if changes:
-            self.owner.record_write_attempt()
-        if changes and not self.owner.flags.handoff_seen:
+        denial = check_edit(
+            self.owner, name=context.function.name, kind=get_tool_kind(context.function), arguments=args
+        )
+        if denial is not None:
             context.metadata[TOOL_RESULT_METADATA_KEY] = {"compass_control": True, "failed": True}
-            context.result = "Not executed. Explore, call start_compass_brief alone, and read the Brief before editing."
-            self.owner.audit("write_held", tool=context.function.name)
+            context.result = denial
             return
         await call_next()
 
@@ -128,6 +144,7 @@ class PendingBrief:
     facts: DeliveryFacts
     conflicts: set[str]
     reason: str
+    purpose: Literal["brief", "closing"] = "brief"
 
 
 class BriefChat(ChatMiddleware):
@@ -149,18 +166,18 @@ class BriefChat(ChatMiddleware):
         conflicts = set(requirement_conflicts(active, snapshot.conflict_notes)) - run_state.conflicts
         reason = delivery_reason(facts, run_state.mark)
         text = ""
-        if run_state.calls > 200:
-            if not run_state.flags.closing_seen:
-                text, reason = CLOSING, "closing-budget"
-        elif run_state.flags.started and (not run_state.flags.handoff_seen or reason or conflicts):
+        purpose: Literal["brief", "closing"] = "brief"
+        if run_state.flags.started and (not run_state.flags.handoff_seen or reason or conflicts):
             text = run_state.core.brief_for_request(recipient="model", phase="icode")
             reason = reason or "exploration-or-conflict"
             if conflicts:
                 text += "\n\n[Compass — new requirement conflict]\n" + "\n".join(sorted(conflicts)) + CONFLICT_REVIEW
+        elif run_state.calls > 200 and not run_state.flags.closing_seen:
+            text, reason, purpose = CLOSING, "closing-budget", "closing"
         if text and self.pending is None:
             if not run_state.flags.rules_seen:
                 text += run_state.constants["SUBMISSION_RULES"]
-            self.pending = PendingBrief(text=text, facts=facts, conflicts=conflicts, reason=reason)
+            self.pending = PendingBrief(text=text, facts=facts, conflicts=conflicts, reason=reason, purpose=purpose)
             self.injection.queue(text, injection_id="compass:" + sha(text))
 
         context.request_message_observers.append(self.observe_request)
@@ -180,11 +197,16 @@ class BriefChat(ChatMiddleware):
         brief = self.pending
         if brief is None:
             raise RuntimeError("No pending Compass Brief to confirm")
+        if brief.purpose == "closing":
+            run_state.flags.closing_seen = True
+            run_state.flags.rules_seen = True
+            run_state.audit("closing_delivered", text=brief.text, sha256=sha(brief.text))
+            self.pending = None
+            return
         run_state.mark = run_state.mark.after(brief.facts)
         run_state.conflicts.update(brief.conflicts)
         run_state.flags.rules_seen = True
         run_state.flags.handoff_seen = run_state.flags.started
-        run_state.flags.closing_seen |= brief.reason == "closing-budget"
         run_state.audit("brief_delivered", reason=brief.reason, text=brief.text, sha256=sha(brief.text))
         self.pending = None
 

@@ -10,6 +10,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
+from compass.ports import SessionArtifactStore
+
 
 @dataclass(frozen=True)
 class RunRequest:
@@ -70,3 +72,9 @@ class BudgetExhausted(RuntimeError):
 
 class InvalidCompassRun(RuntimeError):
     """The required handoff and Brief were not consumed."""
+
+
+class RunArtifactStore(SessionArtifactStore, Protocol):
+    """Runtime auditing extends core persistence without changing the frozen core port."""
+
+    def append_text(self, path: Path, payload: str) -> None: ...

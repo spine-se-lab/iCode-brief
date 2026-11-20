@@ -174,7 +174,7 @@ async def test_native_ui_readonly_and_strict_paths(tmp_path, monkeypatch, stream
     settings, models = _make_settings_and_models()
     models.get("mock-profile").stream = stream
     profile = _make_profile()
-    profile.metadata["compass_enabled"] = True
+    profile.extensions.append("compass")
     host = ChrysSessionHost(
         profile_name=profile.name,
         settings=settings,
@@ -331,7 +331,7 @@ async def test_readonly_native_retry_then_next_turn_can_start_compass(tmp_path, 
     settings = replace(settings, max_transient_retries=1)
     models.get("mock-profile").stream = stream
     profile = _make_profile()
-    profile.metadata["compass_enabled"] = True
+    profile.extensions.append("compass")
     host = ChrysSessionHost(
         profile_name=profile.name,
         settings=settings,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,10 +9,10 @@ from typing import Any
 
 from compass.core.briefing.policy import DeliveryMark
 from compass.core.session import CompassSession
-from compass.ports import MaintenanceModel, SessionArtifactStore
+from compass.ports import MaintenanceModel
 from compass.provenance import dump, sha
 from compass.runtime.budget import MAX_CALLS, MAX_SECONDS
-from compass.runtime.records import BudgetExhausted
+from compass.runtime.records import BudgetExhausted, RunArtifactStore
 
 
 @dataclass
@@ -42,7 +41,7 @@ class RunState:
         constants: dict[str, str],
         model: MaintenanceModel | None = None,
         *,
-        artifacts: SessionArtifactStore,
+        artifacts: RunArtifactStore,
     ) -> None:
         self.task = task
         self.cwd = cwd
@@ -69,8 +68,9 @@ class RunState:
 
     def audit(self, event: str, **fields: Any) -> None:
         path = self.directory / "adapter-events.jsonl"
-        with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600), "a") as f:
-            f.write(dump({"event": event, "time": time.time(), "step": self.calls, **fields}) + "\n")
+        self.artifacts.append_text(
+            path, dump({"event": event, "time": time.time(), "step": self.calls, **fields}) + "\n"
+        )
 
     async def publish(self, event: object) -> None:
         self.audit("core_event", type=type(event).__name__)

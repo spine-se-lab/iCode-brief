@@ -47,7 +47,6 @@ PROFILE_CONFIG_MESSAGE_IDS: frozenset[str | tuple[str, str]] = frozenset(
         "tui.agent_config.basic.agent_type",
         "tui.agent_config.basic.agent_type_note",
         "tui.agent_config.basic.built_in",
-        "tui.agent_config.basic.compass",
         "tui.agent_config.basic.default_profile",
         "tui.agent_config.basic.description",
         "tui.agent_config.basic.display_name",

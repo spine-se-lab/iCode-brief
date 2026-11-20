@@ -164,3 +164,10 @@ You can switch the current agent through the input field or the status bar:
 - **Through the status bar**: Click the agent name in the status bar above the input field to open the agent picker, then select the agent to use.
 
 After switching, iCode immediately uses the selected agent for subsequent requests. The current agent is grayed out in the list, with a hollow circle before its name. The list shows only profiles that can serve as main agents.
+
+
+## Compass (this branch)
+
+This branch bundles Compass. After `uv sync --locked`, enable `compass` in the agent’s **Tools → Extensions** tab. It uses the selected model and native approvals/retries, with a shared 250-request task budget and no Compass wall deadline. Only the native main session is supported; do not enable it for sub-agents, workflow nodes or external ACP agents. For profiles using the old `metadata.compass_enabled` switch, follow the explicit [migration instructions](../../../compass/EXTENSION_MIGRATION_REVIEW.md).
+
+The normal main session uses the extension’s stable context and before-tool hooks; approval-edited arguments are checked again. Artifacts use `session_data_dir`. Older checkpoints keep their budget and delivery state, and referenced raw evidence is copied through the existing restore logic; old directories are retained. The isolated evaluation entry keeps its existing guard and artifact protocol.

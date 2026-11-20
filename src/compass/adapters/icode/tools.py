@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, cast
 
-from chrys.extensions import Extension, ToolContext
+from chrys.extensions import Extension, ToolCall, ToolContext, ToolError, TurnContext
+from compass.runtime.prompts import INTERACTIVE_WORKFLOW
+
+from .middleware import check_edit
+from .scope import current_runtime
 
 if TYPE_CHECKING:
     from compass.runtime.run_state import RunState
@@ -12,7 +16,7 @@ if TYPE_CHECKING:
     from .interactive import InteractiveCompass
 
 
-def make_extension(owner: RunState | InteractiveCompass, *, interactive: bool = False) -> Extension:
+def make_extension(owner: RunState | InteractiveCompass | None = None, *, interactive: bool = False) -> Extension:
     extension = Extension()
 
     @extension.tool(requires_approval=False)
@@ -21,7 +25,8 @@ def make_extension(owner: RunState | InteractiveCompass, *, interactive: bool = 
         exploration_summary: Annotated[str, "Repository findings, paths and unresolved assumptions"],
     ) -> str:
         """Finish repository exploration and initialize Compass. Call alone before editing."""
-        return await owner.handoff(exploration_summary)
+        runtime = owner if owner is not None else current_runtime(ctx)
+        return await runtime.handoff(exploration_summary)
 
     @extension.tool(requires_approval=False)
     async def inspect_compass_brief(
@@ -29,9 +34,24 @@ def make_extension(owner: RunState | InteractiveCompass, *, interactive: bool = 
         refs: Annotated[list[str], "Requirement, claim or evidence IDs; empty for overview"],
     ) -> str:
         """Read full Compass records. This is context, not new repository evidence."""
-        return await owner.core.inspect(refs)
+        runtime = owner if owner is not None else current_runtime(ctx)
+        return await runtime.core.inspect(refs)
 
     if interactive:
+
+        @extension.context
+        async def workflow(ctx: TurnContext) -> str:
+            """Stable turn context only; dynamic Briefs require per-request delivery."""
+            return INTERACTIVE_WORKFLOW
+
+        @extension.before_tool
+        async def guard_edit(call: ToolCall) -> None:
+            runtime = cast("InteractiveCompass", owner if owner is not None else current_runtime(call.context))
+            if runtime.owner is None:
+                raise ToolError("Compass turn not started; the tool did not run.")
+            denial = check_edit(runtime.owner, name=call.name, kind=call.kind, arguments=call.arguments)
+            if denial is not None:
+                raise ToolError(denial)
 
         @extension.tool(requires_approval=False)
         async def update_compass_requirements(ctx: ToolContext) -> str:
@@ -39,6 +59,11 @@ def make_extension(owner: RunState | InteractiveCompass, *, interactive: bool = 
 
             Uses recorded user text, never a model-written replacement task. Not needed for questions or 'continue'.
             """
-            return await cast("InteractiveCompass", owner).update_requirements()
+            runtime = owner if owner is not None else current_runtime(ctx)
+            return await cast("InteractiveCompass", runtime).update_requirements()
 
     return extension
+
+
+# Normal entry-point discovery caches declarations, never a shared runtime.
+extension = make_extension(interactive=True)

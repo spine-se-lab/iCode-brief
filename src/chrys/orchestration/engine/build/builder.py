@@ -393,7 +393,12 @@ async def build_agent(
         if profile.acp is not None:
             raise ValueError(f"ACP profile {profile.name!r} is sub-agent-only and cannot be launched as the main agent")
 
-        compass_enabled = profile.metadata.get("compass_enabled") is True
+        compass_enabled = "compass" in profile.extensions
+        if profile.metadata.get("compass_enabled") is True:
+            raise ValueError(
+                "Migrate the old Compass switch with python -m compass.adapters.icode.migrate "
+                "<agent-profile.yaml> --apply, then enable it through Tools > Extensions."
+            )
         transient_retries = settings.effective_max_transient_retries()
 
         if turn_context is None:
@@ -839,9 +844,17 @@ async def build_agent(
         if compass_enabled:
             from compass.adapters.icode.interactive import InteractiveCompass
 
-            compass = InteractiveCompass(active_profile, runtime, effective_session_dir, on_side_call_usage)
+            if "compass" not in extensions.details:
+                raise ValueError("Compass was selected but its extension failed to assemble")
+            compass_context = next(context for context in extensions.contexts if context.extension_id == "compass")
+            compass = InteractiveCompass(
+                active_profile,
+                runtime,
+                compass_context.turn_context("").session_data_dir,
+                on_side_call_usage,
+            )
             await prepared.own_or_release(compass.aclose)
-            compass.add_tools(tools, tool_build)
+            compass.tools = tools
 
         tool_names = [t.name for t in tools]
         tool_kinds = {t.name: k for t in tools if (k := get_tool_kind(t))}

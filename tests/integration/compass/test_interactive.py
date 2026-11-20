@@ -6,10 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from textual.widgets import Checkbox
 
-from chrys.app.tui.screens.agents.config import AgentsConfigScreen
-from chrys.app.tui.screens.agents.panels.basic import BasicConfigPanel
 from chrys.app.tui.theme import TuiVariableDefaultsMixin
 from chrys.foundation.models.invocations import InvocationOrigin
 from chrys.foundation.models.session_surface import SessionSurface
@@ -54,31 +51,25 @@ async def maintenance(self, *, system_prompt, user_prompt, response_schema, max_
 
 
 @pytest.mark.asyncio
-async def test_compass_switch_roundtrip_and_off_preserves_other_metadata(tmp_path):
+async def test_compass_extension_roundtrip_and_off_preserves_other_metadata(tmp_path):
+    from chrys.app.tui.screens.agents.panels.tools import ToolsConfigPanel
+    from tests.app.tui.screens.test_agent_config_extensions import _switches
+    from tests.support.waiting import wait_for
+
     profile = AgentProfile(name="Mine", metadata={"other": "keep"})
-    app = CompassWidgetApp(lambda: BasicConfigPanel(profile))
-    async with app.run_test(size=(100, 50)) as pilot:
-        await pilot.pause()
-        toggle = app.query_one("#bc-compass", Checkbox)
-        panel = app.query_one(BasicConfigPanel)
-        assert not toggle.has_class("bc-model-section")
-        assert len(list(panel.query(".bc-model-section"))) == 4
-        panel._apply_agent_type_state(True)
-        assert toggle.display is False
-        panel._apply_agent_type_state(False)
-        assert toggle.display is True
+    app = CompassWidgetApp(lambda: ToolsConfigPanel(profile.tools, extensions=profile.extensions))
+    async with app.run_test(size=(100, 60)) as pilot:
+        await wait_for(lambda: "compass" in _switches(app), pilot=pilot, timeout=10, description="Compass extension")
+        toggle = _switches(app)["compass"]
         assert toggle.value is False
         toggle.value = True
-        config = app.query_one(BasicConfigPanel).get_config()
-        AgentsConfigScreen._apply_basic_to_profile(profile, config, is_builtin=False)
+        profile.extensions = app.query_one(ToolsConfigPanel).get_config().extensions
         path = save_profile(profile, target_dir=tmp_path)
         restored = load_profile_from_yaml(path)
-        assert restored.metadata == {"other": "keep", "compass_enabled": True}
+        assert restored.metadata == {"other": "keep"}
+        assert restored.extensions == ["compass"]
         toggle.value = False
-        AgentsConfigScreen._apply_basic_to_profile(
-            profile, app.query_one(BasicConfigPanel).get_config(), is_builtin=False
-        )
-        assert profile.metadata == {"other": "keep"}
+        assert app.query_one(ToolsConfigPanel).get_config().extensions == []
 
 
 @pytest.mark.asyncio
@@ -103,7 +94,7 @@ async def test_native_main_session_explores_brief_then_submission_check(tmp_path
     settings, models = _make_settings_and_models()
     models.get("mock-profile").stream = stream
     profile = _make_profile()
-    profile.metadata["compass_enabled"] = True
+    profile.extensions.append("compass")
     host = ChrysSessionHost(
         profile_name=profile.name,
         settings=settings,
@@ -250,12 +241,13 @@ async def test_full_agent_settings_save_button_persists_compass(monkeypatch):
     from chrys.foundation.platform import get_platform
     from tests.app.tui.screens import _agent_config_support as support
     from tests.app.tui.screens._agent_config_support import (
+        _activate_agent_config_tab,
         _wait_for_hydrated,
-        _wait_for_selectors,
         make_profile,
         open_agent_config,
         registry_with,
     )
+    from tests.app.tui.screens.test_agent_config_extensions import _switches
     from tests.support.tui_helpers import PlaceholderHostApp
     from tests.support.waiting import wait_for
 
@@ -265,19 +257,18 @@ async def test_full_agent_settings_save_button_persists_compass(monkeypatch):
     monkeypatch.setattr(support, "PlaceholderHostApp", ConfigHost)
     registry = registry_with(make_profile("Mine", display_name="Mine", description="Coding"))
     async with open_agent_config(registry, current_profile="Mine") as (screen, pilot):
-        await _wait_for_selectors(screen, pilot, "#bc-compass")
-        checkbox = screen.query_one("#bc-compass", Checkbox)
-        assert not checkbox.value
-        checkbox.value = True
+        await _activate_agent_config_tab(screen, pilot, "tools")
+        await wait_for(lambda: "compass" in _switches(screen), pilot=pilot, timeout=10, description="Compass extension")
+        _switches(screen)["compass"].value = True
         save = screen.query_one("#ac-save", Button)
-        await wait_for(lambda: not save.disabled, pilot=pilot, timeout=10, description="Compass switch enables Save")
+        await wait_for(lambda: not save.disabled, pilot=pilot, timeout=10, description="Compass enables Save")
         save.press()
         await pilot.pause()
         await _wait_for_hydrated(screen, pilot)
-        assert screen.query_one("#bc-compass", Checkbox).value
-    assert registry.get("Mine").metadata["compass_enabled"] is True
+    assert registry.get("Mine").extensions == ["compass"]
     saved = load_profile_from_yaml(get_platform().config_dir / "agents" / "Mine.yaml")
-    assert saved.metadata["compass_enabled"] is True
+    assert saved.extensions == ["compass"]
+    assert "compass_enabled" not in saved.metadata
 
 
 @pytest.mark.asyncio
@@ -289,7 +280,7 @@ async def test_native_model_switch_rebuild_and_compass_off(tmp_path, monkeypatch
     settings, models = _make_settings_and_models()
     models.register(ModelProfile(id="second", name="Second", provider="mock", model_id="second"))
     profile = _make_profile()
-    profile.metadata["compass_enabled"] = True
+    profile.extensions.append("compass")
     registry = _make_agent_registry(profile)
     host = ChrysSessionHost(
         profile_name=profile.name,
@@ -315,7 +306,7 @@ async def test_native_model_switch_rebuild_and_compass_off(tmp_path, monkeypatch
             )
             == 1
         )
-        profile.metadata.pop("compass_enabled")
+        profile.extensions.remove("compass")
         await host.engine._on_set_model_profile(SetModelProfile(profile_id="mock-profile"))
         assert host.engine.current.require_loaded().bindings.compass is None
         assert new.model.closed
@@ -389,7 +380,7 @@ async def test_interactive_failure_budget_and_cancellation_do_not_retry(tmp_path
     finally:
         await bridge.aclose()
     assert injection.pending_by_id("user-note") is not None
-    assert injection.pending_by_id(bridge.workflow_id) is None
+    assert bridge.invocation_id == "t"
 
 
 @pytest.mark.asyncio
