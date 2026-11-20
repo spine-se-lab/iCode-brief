@@ -168,6 +168,6 @@ iCode 默认提供的 Code Agent 和 Q&A Agent 可以作为主智能体，Explor
 
 ## Compass（本分支）
 
-本分支内置 Compass。更新代码并执行 `uv sync --locked` 后，在该智能体的**工具 → 扩展**中启用 `compass`。它沿用所选模型、原生审批和重试；同一任务累计最多 250 次主请求，没有 Compass 总时间上限。仅支持原生主会话，请勿对子智能体、工作流节点或外部 ACP 智能体启用。使用旧 `metadata.compass_enabled` 开关的配置，请按[迁移说明](../../../compass/EXTENSION_MIGRATION_REVIEW.md)显式迁移。
+本分支内置 Compass。更新代码并执行 `uv sync --locked` 后，在该智能体的**工具 → 扩展**中启用 `compass`。它沿用所选模型、原生审批和重试；同一任务累计最多 250 次主请求，没有 Compass 总时间上限。Compass 仅在原生主会话运行。配置被子智能体、工作流节点或旁路问答复用时，普通工具继续按宿主原生规则执行；Compass 专用工具仍拒绝这些调用，不借用父任务。外部 ACP 智能体不支持。使用旧 `metadata.compass_enabled` 开关的配置，请按[迁移说明](../../../compass/EXTENSION_MIGRATION_REVIEW.md)显式迁移。
 
 普通主会话已使用扩展的固定 context 和 before-tool hook，审批修改后的参数会再次检查。制品使用 `session_data_dir`。旧快照的预算、投递状态继续恢复，引用的原始证据由现有恢复逻辑复制；旧目录保留。独立评测入口继续沿用原门禁和制品协议。

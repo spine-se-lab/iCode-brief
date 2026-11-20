@@ -38,6 +38,12 @@ def invocation_scope(runtime: InteractiveCompass, origin: InvocationOrigin) -> G
         _ACTIVE.reset(token)
 
 
+def is_non_main_invocation() -> bool:
+    """Only explicit child origins bypass main policy; absent identity still fails closed."""
+    origin = current_invocation_origin.get()
+    return origin is not None and origin.kind in ("sub_agent", "workflow_node", "side_question")
+
+
 def current_runtime(context: ToolContext) -> InteractiveCompass:
     scope = _ACTIVE.get()
     origin = current_invocation_origin.get()

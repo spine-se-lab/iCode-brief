@@ -32,7 +32,7 @@ uv run python -m compass.adapters.icode.migrate /absolute/path/agent.yaml --appl
 
 迁移保留其他配置键和已有扩展，删除旧开关键；只有原值为布尔 `true` 才加入 `compass`。重复执行不会重复加入。YAML 会重新排版，原注释不保留。外部 ACP 配置不能迁移成 Compass 主会话。
 
-仅支持原生主会话。对子代理、workflow 或 side-question 不建立共享账本；误调用 Compass 工具会明确拒绝，不会借用父任务状态。
+仅支持原生主会话。对子代理、workflow 或 side-question 不建立共享账本；它们的普通工具绕过 Compass 主会话交接检查，继续遵循宿主原生审批及其他扩展规则。误调用 Compass 工具仍明确拒绝，不会借用父任务状态。
 
 ## 从启动到结束
 
@@ -123,3 +123,14 @@ main 合并记录单独保留；本轮 Compass 迁移按用户审核后的指令
 使用原生 `icode run` 和 `extensions: [compass]` 跑独立的端口范围解析修复任务，实际模型响应为 `deepseek/deepseek-v4.1-flash-1017`。进程正常退出，耗时 89.27 秒，15 次主请求均有响应。模型探索后调用一次 `start_compass_brief`，之后开始修改；审计记录两次 Brief 投递和一次提交检查，制品写入新的 `extension-data/compass` 目录。
 
 独立重跑测试 **13/13 通过**：原有 8 项测试的 AST 保持不变，新增 5 项边界测试。此项是正常链路的真实冒烟验证，不是 benchmark 成绩，也不覆盖全部异常分支。模型配置请求 `reasoning.effort=max`；本次未做上游转发参数回显核验。示例代码与日志独立保存，不纳入产品源码或测试输入。
+
+
+## 子调用工具误拦修复（2026-11-20）
+
+此前 `before_tool` 对所有工具先调用 `current_runtime()`，子调用因身份不是主会话而被拒，连普通 `sleep` 都不能执行。新增回归通过 iCode 完整父代理→子代理→Extension hook→工具返回链路复现了问题（模型为离线模拟，不是一次付费真实模型运行）。
+
+修复仅涉及 Compass 的 `scope.py` 和 `tools.py`：明确的非主调用跳过 Compass 编辑前检查；主会话或缺失身份仍沿用原严格检查。三个 Compass 工具保留原来的身份校验。明确识别子调用时不返回流程提示；由于当前宿主在准备子代理 context 时仍可能携带父调用身份，通用提示同时明确限定“只适用于主代理，子代理正常使用自己的工具，不调用 Compass”。这不是让子代理支持 Compass，也不宣称宿主已经在准备阶段提供正确的子调用身份。
+
+新增 10 项回归覆盖三类非主调用的读、写、shell，以及完整子代理流水线。修复前 10 项失败；修复后全部 Compass 测试 **162 passed**（包括原有主调用拦截、身份缺失拒绝、交接及重试测试）。原 core 与 iCode 宿主源码未修改。
+
+本次 Smart Test 最终为 **PASSED / exit 0**：Compass **162 passed**，架构检查 **72 passed**；不与先前单独跑的 162 项相加。Ruff、格式、Darwin 目标类型检查和 `git diff --check` 均通过。
