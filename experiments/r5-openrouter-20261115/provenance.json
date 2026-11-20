@@ -1,0 +1,20 @@
+{
+  "upstream": "78802f87d07f053fe560d680e4696c2bf322e2c2",
+  "frozen_r5_files": 72,
+  "old_native_adapter_sha256": "8d2c8d8f2c5ecd1bbc46c68555760f06ff3f006c9d7f082cb79e6ed27593422a",
+  "native_adapter_sha256": "e8ba9faed2b9ddecba7b03985356d5e8fe987e2aa1dc511d83a5085373e562f5",
+  "adaptations": [
+    "OpenRouter URL and key binding",
+    "DeepSeek-only route with require_parameters",
+    "main max reasoning, maintenance disabled",
+    "SDK retry limit 2, iCode transient retry limit 0",
+    "final serialized HTTP parameter and response provider checks",
+    "experiment-owned container label"
+  ],
+  "graders_unchanged": {
+    "central_worker.py": "2d0c4d36031b5d664b071ed55dc66fd85c1638ce6b0ccb2667664db474b8461b",
+    "verifier.py": "30419862712cf1ffb35c20102b270e1da7f06a2fda7c980d820e8e325163150b",
+    "score_reports.py": "bc5fae419616790aa01eefd8ecf2f24c2f83c4682c8cf128faec09a61d0a5aa1",
+    "regrade_remote.py": "32e95fdacdda95e48762ca68f96483939a79910aee7f12e34d53013784aeb57d"
+  }
+}

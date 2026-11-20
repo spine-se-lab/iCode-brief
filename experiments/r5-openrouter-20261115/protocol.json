@@ -1,0 +1,80 @@
+{
+  "upstream": "78802f87d07f053fe560d680e4696c2bf322e2c2",
+  "icode_version": "0.36.0",
+  "model": "deepseek/deepseek-v4.1-flash-1017",
+  "base_url": "https://openrouter.ai/api/v1",
+  "provider": {
+    "only": [
+      "deepseek"
+    ],
+    "allow_fallbacks": false,
+    "require_parameters": true
+  },
+  "main": {
+    "reasoning": {
+      "effort": "max"
+    },
+    "max_tokens": 64000,
+    "temperature": "omitted; provider default",
+    "top_p": "omitted; provider default",
+    "top_k": "omitted; provider default",
+    "stream": false,
+    "calls": 250,
+    "wall_seconds": 11400,
+    "sdk_retries": 2,
+    "icode_transient_retries": 0
+  },
+  "maintenance": {
+    "reasoning": {
+      "enabled": false
+    },
+    "temperature": 0,
+    "response_format": "json_object",
+    "max_tokens": "frozen R5 per-operation budget",
+    "sdk_retries": 2
+  },
+  "schedule": {
+    "95": [
+      1,
+      3
+    ],
+    "96": [
+      2,
+      4
+    ],
+    "per_host_pipelines": 4,
+    "per_host_verifiers": 2,
+    "same_base_serial": true,
+    "rounds_serial_per_host": true,
+    "generation_attempts": 452
+  },
+  "isolation": {
+    "generation_network": "none",
+    "generation_mounts": 0,
+    "platform": "linux/amd64",
+    "cpus": 2,
+    "memory_gib": 5,
+    "verification_network": "bridge",
+    "build_network": "none",
+    "verification_timeout": 3600,
+    "disk_start_gib": 60,
+    "disk_generation_gib": 15,
+    "disk_verification_gib": 25
+  },
+  "r5_archive_sha256": "62c304ae6315ffb1c977def04b77fb9c552ac75ceb533fd249c2b0180818d257",
+  "r5_files": 72,
+  "task_count": 113,
+  "patch_verification": "one candidate per round/task; no scoring retries",
+  "ordinary_generation_error": "retain patch and verify; continue other authorized tasks",
+  "configuration_or_harness_error": "stop further dispatch; preserve evidence",
+  "extra_probe": {
+    "count": 1,
+    "authorized": true,
+    "retry": 0,
+    "host": "95",
+    "stream": true,
+    "purpose": "gateway upstream max verification"
+  },
+  "icode_wire_adapter": "deepseek-openai (max_tokens and preserved reasoning); OpenRouter URL and provider routing",
+  "python": "3.14.7"
+}
