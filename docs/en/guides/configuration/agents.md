@@ -164,3 +164,25 @@ You can switch the current agent through the input field or the status bar:
 - **Through the status bar**: Click the agent name in the status bar above the input field to open the agent picker, then select the agent to use.
 
 After switching, iCode immediately uses the selected agent for subsequent requests. The current agent is grayed out in the list, with a hollow circle before its name. The list shows only profiles that can serve as main agents.
+
+
+## Compass (this branch)
+
+Enable **compass** in the Agent's **Tools → Extensions** tab after `uv sync --locked`. It uses the selected model and native approvals/retries. Three tools query records, create/update requirements, and evaluate the core Brief maintenance policy. `update_compass_requirements()` takes no arguments: a main-session context callback captures original user messages. Call it initially and again after repository exploration; unchanged user text and context skip extraction. Capture alone does not call a model. If the requirements tool was skipped, `update_compass_brief()` refreshes missing or outdated Goal/Requirements from captured user text before checking maintenance policy; queries remain read-only. No forced handoff, edit gate, extra completion pass or Compass main-request budget is added. Ordinary child tools remain native; Compass tools cannot borrow the parent's ledger. Compass saves its own `session.json` under the Extension session directory; the host serializer does not store its ledger. The dedicated evaluation CLI retains its separate strict workflow. See the [tool-interface review](../../../compass/TOOL_INTERFACE_REVIEW.md).
+
+
+Compass also stores observed context/tool fields in the private session-local `adapter-input.jsonl`. Unmapped tool kinds and rejected calls are audit-only; only supported executed actions enter repository evidence. Missing exit codes remain unknown.
+
+Human commands: `/compass` checks requirements and then Brief maintenance using the existing gate policy; an update is not forced. Run it after sending a task and while the agent is idle. `/compass status` opens a read-only grouped snapshot, without calling a model or advancing state. Neither command becomes a new user task or marks the Brief as consumed by the agent. See the [command review](../../../compass/COMMANDS_REVIEW.md). Autocomplete lists `/compass` (update) and `/compass status` (view) at the same level. Selecting either runs it directly; there is no Compass submenu. Unknown arguments show usage only.
+
+
+Explicit Brief checks now reassess revised requirements against recorded evidence and process pending test results without waiting for eight new observations. Ordinary tools still only collect evidence. The status view shows record revision, processed evidence and the remaining evidence window; a record revision is not a count of completed maintenance calls. See [maintenance refresh review](../../../compass/MAINTENANCE_REFRESH_REVIEW.md).
+
+
+### Compass grouped status dialog
+
+`/compass status` opens a snapshot accordion with Goal, Requirements, Constraints, Claims, Tensions, Already read, Weak coverage, and Evidence status. Click a heading or press Enter to expand it; open a row for details, related entries, Back, and Escape. Maintain uses the existing maintenance operation; Preview Brief is read-only. Viewing does not call a model.
+
+Brief refresh reconciles chronological user follow-ups: explicit later authorization supersedes a temporary no-edit restriction while unrelated constraints remain. A failed extraction keeps the prior contract and reports an error. Preview Brief opens the current snapshot; Previous/Left and Next/Right browse saved historical Briefs. Saved text is not a delivery receipt. Browsing is read-only and calls no model. See the [follow-up delivery review](../../../compass/FOLLOWUP_DELIVERY_REVIEW.md).
+
+Contract policy 5 refreshes older sessions on their next maintenance. Literal repository copies remain active R/K entries with a `(repo)` source label; this label does not decide authorization. Explicit defect reports separated from R/K remain visible as Goal symptom background in status and Brief; user-quoted and ambiguous clauses stay active. Only complete, unqualified Compass invocation clauses are separated from mixed task messages; original inputs and tool-only messages are retained. If no contract entries remain, Brief maintenance reports missing requirements instead of restoring defective entries. Invalid conflict-quote rows are discarded individually. A new user message, including “Check the Brief”, intentionally causes another extraction on the next update; viewing `/compass status` does not. Semantic duplicates and stale README instructions versus later user scope still depend on model reconciliation. See the [contract history review](../../../compass/CONTRACT_HISTORY_REVIEW.md).

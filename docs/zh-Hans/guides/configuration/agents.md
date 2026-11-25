@@ -164,3 +164,27 @@ iCode 默认提供的 Code Agent 和 Q&A Agent 可以作为主智能体，Explor
 - **通过状态栏切换**：点击输入栏上方状态栏中的智能体名称，打开智能体选择窗口，然后选择要使用的智能体。
 
 切换后，iCode 会立即使用所选智能体处理后续请求。当前使用的智能体在列表中以灰色显示，名称前带有空心圆圈。列表仅显示可以作为主智能体使用的配置。
+
+
+## Compass（本分支）
+
+执行 `uv sync --locked` 后，在 Agent 的 **Tools → Extensions** 中开启 **compass**。它沿用界面选择的模型和原生审批、重试设置，提供三个工具：按 ID 查询、创建或更新任务要求、根据核心机制判断是否维护 Brief。`update_compass_requirements()` 无需参数，直接使用主会话回调捕获的用户原文；开始时调用一次，探索仓库后可再次调用。用户输入和仓库上下文都未变化时跳过提取。原文捕获本身不调用模型。若漏掉要求工具，`update_compass_brief()` 会先根据用户原文刷新缺失或落后于新用户消息的 Goal/Requirements，再判断维护条件；查询工具仍不调用模型。不强制交接、不拦截编辑、不追加收尾回合，也不额外限制主请求预算。子调用的普通工具仍按原生规则执行，不能借用主会话的 Compass 记录。Compass 在 Extension 会话目录内自行读写 `session.json`，不再依赖 iCode serializer 保存账本。独立评测 CLI 保留自己的严格流程。详见[三工具审核说明](../../../compass/TOOL_INTERFACE_REVIEW.md)。
+
+
+Compass 还会把实际收到的 context/工具信息保存在会话私有的 `adapter-input.jsonl` 中。尚未适配的工具类型和被拒绝的调用只留观察记录，只有已支持且实际执行的动作进入仓库证据。未提供退出码时保留未知。
+
+人工命令：`/compass` 依次进入要求更新和 Brief 维护检查，是否实际更新由原有 gate 判断，不强制调用模型。先发送正常任务，再在 Agent 空闲时使用。`/compass status` 弹窗分组展示当前状态，只读，不调用模型、不推进状态。命令不会成为新的用户任务，也不会把人查看 Brief 记成 Agent 已消费。详见[命令审核说明](../../../compass/COMMANDS_REVIEW.md)。 补全列表并列显示 `/compass` 和 `/compass status`，选中即执行。未知参数只提示正确用法。
+
+
+显式检查 Brief 时，已变更的要求会结合已有证据重新评估；尚未处理的测试结果不再等待累计 8 条新观察。普通工具仍只收集证据。状态页显示记录版本、已处理证据位置和剩余证据窗口；记录版本不代表已完成的维护次数。详见[维护衔接修复说明](../../../compass/MAINTENANCE_REFRESH_REVIEW.md)。
+
+
+### Compass 分组状态弹窗
+
+`/compass status` 按 Goal、Requirements、Constraints、Claims、Tensions、Already read、Weak coverage、Evidence status 折叠展示快照。点击标题或按 Enter 切换分组；点击条目查看详情，可关联跳转、Back 返回、Esc 关闭。底部 Maintain 运行既有维护，Preview Brief 只读预览。浏览不会触发模型调用。
+
+Brief 刷新按时间顺序处理用户追问：后续明确授权可替代“暂时不修改”，其余约束保留；提取失败时保留旧契约并报错。Preview Brief 默认打开当前快照，Previous/左方向键查看更早的已保存 Brief，Next/右方向键查看更新版本。历史保存不代表已发送给 Agent；浏览只读且不调用模型。详见[多轮要求及投递核查](../../../compass/FOLLOWUP_DELIVERY_REVIEW.md)。
+
+命令补全在同一级并列显示 `/compass`（更新要求及 Brief）和 `/compass status`（查看状态及 Brief 历史）；选中即执行，不再进入 Compass 子菜单。
+
+契约策略 5 会在下次维护时重新提取旧会话需求。照抄仓库原文的 R/K 保留，并加 `(repo)` 来源标注；标注不判断授权。明确故障描述从 R/K 移入 Goal 的症状背景，仍可在状态和 Brief 中查看；用户原文和不确定条款保留为有效要求。混合任务消息只分离完整、无附加条件的 Compass 调用分句，原始输入和纯调用消息仍保留。若不剩有效契约条目，Brief 维护明确报告缺少要求，不再放回故障句。无效冲突引文逐行丢弃。新用户消息（包括“Check the Brief”）会在下一次更新时再次提取，这是接受的行为；查看 `/compass status` 不调用模型。近义重复、旧 README 指令与最新用户范围仍依赖模型协调。详见[历史故障与当前要求核查](../../../compass/CONTRACT_HISTORY_REVIEW.md)。

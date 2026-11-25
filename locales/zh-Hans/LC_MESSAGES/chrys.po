@@ -18056,6 +18056,9 @@ msgstr "工作区列表无法保存：{reason}"
 #~ msgid "tui.agent_config.already_default"
 #~ msgstr "智能体已使用系统默认设置"
 
+#~ msgid "tui.agent_config.basic.compass"
+#~ msgstr "Compass"
+
 #~ msgid "tui.agent_config.button.reset"
 #~ msgstr "重置"
 

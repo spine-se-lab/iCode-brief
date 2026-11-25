@@ -86,6 +86,10 @@ def test_no_retired_directory_vocabulary_in_source_docs_or_catalogs() -> None:
                     continue
                 if relative == "src/chrys/service/state/_session_files.py":
                     line = line.replace("b'\"project\"'", "")  # legacy checkpoint probe
+                if relative == "src/compass/evidence/actions.py":
+                    # External uv/Poetry/Gradle CLI spellings, not iCode settings.
+                    # Pinned by test_external_project_options_keep_test_command_semantics.
+                    line = line.replace('"--project"', '""').replace('"--project-dir"', '""')
                 old_names = _PYTHON_PROJECT.search(text) if path.suffix == ".py" else None
                 legacy_literal = path.suffix == ".py" and retired_words(line) if _SOURCE_LITERAL.search(line) else ""
                 if directory == "docs" and path.name == "python-extensions.md":
@@ -102,6 +106,14 @@ def test_directory_scope_identifiers_use_workdir() -> None:
             with path.open("rb") as handle:
                 for token in tokenize.tokenize(handle.readline):
                     if token.type == tokenize.NAME and _UNDERSCORED_SCOPE.fullmatch(token.string):
+                        if (
+                            path.relative_to(ROOT).as_posix() == "src/compass/adapters/icode/information.py"
+                            and token.string == "working_dir_source"
+                        ):
+                            # Existing adapter-input.jsonl field: provenance of the
+                            # observed cwd, not a directory-scoped setting. Its wire
+                            # spelling is pinned in test_adapter_information.py.
+                            continue
                         offenders.append(f"{path.relative_to(ROOT)}:{token.start[0]}: {token.string}")
     assert not offenders, "Use workdir in directory-scope identifiers:\n" + "\n".join(offenders)
 

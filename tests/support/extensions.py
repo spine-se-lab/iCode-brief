@@ -79,3 +79,14 @@ def install_distribution_extension(
     )
     monkeypatch.syspath_prepend(str(site))
     _remove_module_at_teardown(monkeypatch, module)
+
+
+def ignore_installed_distribution_extensions(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Isolate catalog assertions from real installed plugins, retaining test installs."""
+    discover = extensions._distribution_extensions
+    installed = {(source.id, source.location) for source in discover()}
+    monkeypatch.setattr(
+        extensions,
+        "_distribution_extensions",
+        lambda: [source for source in discover() if (source.id, source.location) not in installed],
+    )

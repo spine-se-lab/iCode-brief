@@ -257,3 +257,22 @@ iCode reports and ignores disallowed working directory keys, values that exceed 
 2. Check for a higher-priority source. Deleting a key from YAML does not clear values from other sources.
 3. For working directory settings, confirm that loading is enabled in user settings and that the key and override direction meet the restrictions.
 4. Check the messages iCode reports at startup. For how invalid values and unknown keys are handled, see [Value syntax and invalid values](#value-syntax-and-invalid-values); for directory-related messages, check [File locations and format](#file-locations-and-format).
+
+## Isolated configuration directory
+
+Set `CHRYS_CONFIG_DIR` to an absolute directory before starting iCode to use a separate configuration/data root. A relative value is rejected; an absent or blank value preserves the default `~/.chrys` (or `%APPDATA%/chrys`). This is a process-start location, not a live-reload setting. It does not sandbox repository tools or change the working directory. The opt-in Compass checkout entry point uses it; see [Compass layer](../../compass/README.md).
+
+## Compass (this branch)
+
+Enable **compass** in the Agent's **Tools → Extensions** tab after `uv sync --locked`. It uses the selected model and native approvals/retries. Three tools query records, create/update requirements, and evaluate the core Brief maintenance policy. `update_compass_requirements()` takes no arguments: a main-session context callback captures original user messages. Call it initially and again after repository exploration; unchanged user text and context skip extraction. Capture alone does not call a model. If the requirements tool was skipped, `update_compass_brief()` initializes missing Goal/Requirements from captured user text before checking maintenance policy; queries remain read-only. No forced handoff, edit gate, extra completion pass or Compass main-request budget is added. Ordinary child tools remain native; Compass tools cannot borrow the parent's ledger. Compass saves its own `session.json` under the Extension session directory; the host serializer does not store its ledger. The dedicated evaluation CLI retains its separate strict workflow. See the [tool-interface review](../../compass/TOOL_INTERFACE_REVIEW.md).
+
+
+Compass also stores observed context/tool fields in the private session-local `adapter-input.jsonl`. Unmapped tool kinds and rejected calls are audit-only; only supported executed actions enter repository evidence. Missing exit codes remain unknown.
+
+Compass renders the complete current Brief by default: Goal, every requirement and constraint, active Claims with all their references, symptoms, conflicts and recorded file-read coverage. No character budget, row preview limit or length-triggered automatic Claim folding is applied. The agent receives the same complete projection that the current Brief view displays; long rows wrap and scroll. Saved historical Briefs retain their original content. Explicit finite budgets remain available to evaluation callers. This display change does not recover details absent from stored evidence excerpts or remove the model provider's context/output limits.
+
+The Compass status dialog uses top tabs for Goal, Requirements, Constraints and the other modules. Switching tabs updates the same dialog; select an individual record to open its detail dialog. Tabs and section labels are bold, record content is indented, and full text remains scrollable. Compact actions are labelled **Update Brief**, **Brief & History** and **Close**. Historical Brief details use **Older / Newer** navigation.
+
+The Goal tab displays only the overall goal description; requirements and constraints remain in their own tabs. Internal record status such as `pending` remains stored but is not shown in requirement or constraint details. The status footer separately counts unprocessed evidence. Current, historical and update-result Briefs share section headings, separated contract rows and indentation. Formatting does not rewrite saved history or restore text omitted in old compact snapshots. Entry titles use bold theme accents even when unselected.
+
+Requirement and constraint details list associated Claim IDs without an evidence-support summary or completion disclaimer. Evidence assessments remain available to the underlying maintenance and reminder logic.

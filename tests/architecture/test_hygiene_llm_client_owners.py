@@ -20,6 +20,10 @@ from tests.architecture._hygiene_core import _meta_guard_problem, _pins_allowlis
 # values name that owner. ``async with scoped_client(...)`` is compliant by
 # construction and needs no entry.
 _LLM_CLIENT_OWNER_ALLOWLIST = {
+    "src/compass/adapters/icode/interactive_model.py::SelectedModel.complete": (
+        "SelectedModel.aclose, called by InteractiveCompass.aclose; "
+        "the adapter is owned by the build's PreparedAgent before any client is created"
+    ),
     "src/chrys/service/llm/clients.py::scoped_client": "the context manager's own finally",
     "src/chrys/orchestration/engine/build/builder.py::build_agent._acquire": (
         "the build's PreparedAgent (prepared.own_or_release)"

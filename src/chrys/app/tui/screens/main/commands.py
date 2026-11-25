@@ -513,6 +513,7 @@ class SlashCommandActionPort(Protocol):
     def reload_settings(self) -> None: ...
     def runtime_details(self) -> None: ...
     def usage(self) -> None: ...
+    def compass(self, arg: str) -> None: ...
     def open_settings(self, tab: str) -> None: ...
     def show_man_pages(self, pages: list[ManPageSpec], *, start_index: int = 0) -> None: ...
     def notify_warning(
@@ -565,6 +566,12 @@ class SlashCommandActions:
     configure_settings: Callable[[str], None]
     show_manual_pages: Callable[[list[ManPageSpec], int], None]
     warn: Callable[[MessageRef | str, MessageRef | str, float | None], None]
+
+    compass_handler: Callable[[str], None] | None = None
+
+    def compass(self, arg: str) -> None:
+        if self.compass_handler is not None:
+            self.compass_handler(arg)
 
     def open_workflows(self) -> None:
         self.workflow_selection()
@@ -902,6 +909,11 @@ class MainSlashCommandRegistry:
 
         from chrys.app.tui.widgets.workflow.text import COMMAND
 
+        try:
+            from compass.adapters.icode.tui.command import command_definitions
+        except ImportError:  # Compass is an optional package.
+            command_definitions = None
+
         self._slash_commands = [
             SlashCommandDef(
                 "new",
@@ -1081,6 +1093,7 @@ class MainSlashCommandRegistry:
                 subcommands=self._buddy.subcommands,
                 man_page=_MAN_BUDDY_BODY.bind(),
             ),
+            *(command_definitions(lambda arg: actions.compass(arg)) if command_definitions else []),  # noqa: PLW0108
             SlashCommandDef(
                 "agents",
                 _DESCRIPTION_AGENTS.bind(),

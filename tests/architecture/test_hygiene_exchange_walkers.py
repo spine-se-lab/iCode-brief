@@ -36,6 +36,11 @@ pytestmark = CI_LINUX_ONLY
 
 
 _EXCHANGE_WALKER_ALLOWLIST = {
+    # Scans ONE finalized ChatResponse, not transcript exchange boundaries.
+    # Call IDs are audit metadata only; no tool-result pairing is performed.
+    # iter_exchanges skips call-free replies, which Compass must retain.
+    # Pinned by test_public_capture_keeps_call_free_replies_without_pairing_tools.
+    (Path("src/compass/adapters/icode/information.py"), "InformationInput.assistant_messages"),
     # Annotation-occurrence scanner: walks persisted group-annotation runs, not
     # exchanges; result classification only delimits occurrence ends.
     (Path("src/chrys/kernel/compaction.py"), "_partial_tool_call_groups"),

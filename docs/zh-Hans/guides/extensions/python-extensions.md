@@ -396,3 +396,9 @@ dev = ["iCode-TUI", "pytest"]
 | 调用结果为“Extension … before_tool hook … failed …, so the call did not run.” | 该钩子抛出了 `ToolError` 以外的异常、运行超时，或返回的不是参数 dict。消息会说明原因；在 TUI 中，配置目录的 `logs/debug.log` 中有具体错误。 |
 | 结果显示为“[Extension … after_tool hook … failed …, so iCode withheld this result.]” | 该钩子抛出了异常、运行超时，或返回的不是文本。在 TUI 中，配置目录的 `logs/debug.log` 中有具体错误。 |
 | 修改扩展后没有效果 | 重启 iCode：iCode 运行期间，每个扩展只导入一次。 |
+
+### Compass 自动检查
+
+启用 Compass 后，第一个工具执行后钩子记录主智能体的读取、写入、搜索和 shell 结果，第二个钩子检查维护策略，并在到期时把 Brief 附加到原始工具结果中，不再依赖智能体主动选择 Compass 工具。未达到阈值时不调用维护模型。到期的检查同步执行，内部总时限为 240 秒；失败会保留工具输出并提示检查不可用，停止操作仍能取消检查。`/compass status` 保持只读。更新扩展后需要重启 iCode，才能加载新钩子。
+
+普通和流式运行中，已完成的智能体公开回复也会进入 Compass 维护输入；私有推理不采集，公开陈述与仓库证据分开保存，不因此增加模型调用。工具证据保留有长度上限的命令或编辑参数，以便对比失败检查与被修改的断言。合并 claim 或记录后续通过的测试时，Brief 会沿支持关系保留原失败检查的复查提示。显式纠正或替代可以撤下提示，但这不等于自动证明原失败已经修复。

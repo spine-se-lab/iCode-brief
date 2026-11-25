@@ -1,0 +1,378 @@
+{
+  "original": {
+    "source_commit": "7b3718fa48c0d2022da9387bb2573a4040911fd7",
+    "uncommitted_runtime_delta": [
+      "src/compass_brief/mini/agent.py"
+    ],
+    "runtime_package_sha256": "62c304ae6315ffb1c977def04b77fb9c552ac75ceb533fd249c2b0180818d257",
+    "runtime_tree_sha256": "8b8186b1989c00a75978754994b45fd3667feca08cf500ed6ca4e9e0c192f901",
+    "files_sha256": {
+      "pyproject.toml": "9411cc04efc838a7e51fd37942a5100ab4d041b8269cce16d6740225841102e9",
+      "src/compass_brief/__init__.py": "a055277a18f6aa915ad032f40d63dbc5d3d6110a3ff425eb620e620c97ff6251",
+      "src/compass_brief/briefing/__init__.py": "408be375721c7eeec60f62fe10c66ed986bc87a0c9d420178254730fd4a1ffcb",
+      "src/compass_brief/briefing/delivery.py": "eae7ae05496c716d80ebde7e1bec7805b8397f08f38125c70bad50c5c1f4cff0",
+      "src/compass_brief/briefing/evidence.py": "fff1b1711f483031f8bedb4778bddf71f79caec65f16b5c63f530cd33b7a3b22",
+      "src/compass_brief/briefing/freshness.py": "95e40d3ce3fbf0958eb9ddcb17c444fe64af0193eb315e6043a7d7687f6bb8b9",
+      "src/compass_brief/briefing/notifications.py": "8b1333541f9378e8241b099c4950ba4501e38f23d24ee3ee51a76406308c46d0",
+      "src/compass_brief/briefing/policy.py": "fa5fc088f5075a31518ec7285dc869e62df6aa3d80690b52cdb04056b1b4602a",
+      "src/compass_brief/briefing/render.py": "f649a0d9a4225d79c5eb077de3a11f89575f2ec53d630486ed1423945e8ab7a5",
+      "src/compass_brief/chrys/__init__.py": "a055277a18f6aa915ad032f40d63dbc5d3d6110a3ff425eb620e620c97ff6251",
+      "src/compass_brief/chrys/artifacts.py": "1fa12a39cb646b2b9d741d581c0633525f4ff737623289c00e09dbd90310c828",
+      "src/compass_brief/chrys/delivery.py": "d4c81b09893191a495857e3a63b7b6c4099c7f15ed6b552f3858932a0be581bf",
+      "src/compass_brief/chrys/engine.py": "eb7794f8d5b8cb4f2040fee31d1797cf45ed9815c933061a998dfb244a8c1201",
+      "src/compass_brief/chrys/event_bridge.py": "e24db21af63c2431b4607029d0e4fb02198520dcecb7b41c4669c3a58d32951a",
+      "src/compass_brief/chrys/events.py": "67d0dae17beb7f662b53f3c51bc7337247d54521debc94234fc4e3df17002a07",
+      "src/compass_brief/chrys/evidence.py": "539aea571b1f997f280db047ca476e68a05083ac2f423f8bf6db74021e9e481d",
+      "src/compass_brief/chrys/feature.py": "cff95ed2e074dfb3d733a434a77cb17f9f8a0a8c10d8f6aba9a37319175858a9",
+      "src/compass_brief/chrys/model.py": "f0b5558549d7f2c065f2e23a604b9c805d3a2155c237436e7bd9bce1674ff986",
+      "src/compass_brief/chrys/options.py": "0c156b38b43d275fcea6c3df6d4355974c8bc53c78b6957d3a0e42f40b9956c6",
+      "src/compass_brief/chrys/storage.py": "63c8376d6e27fc1242829f9f1bd9795ca254ecc2e214fa64d611a6c38abd0ad3",
+      "src/compass_brief/chrys/task_input.py": "2b088a7f63af9fa3cc61c47dd6acf44ee2983af858c28d0548eeba6f4b57b0f0",
+      "src/compass_brief/chrys/tools.py": "471f0a5fe8351b62069984de23c5c2247ba41e642d5f971aa1ed8bf9f8235bb3",
+      "src/compass_brief/chrys/tui/__init__.py": "a055277a18f6aa915ad032f40d63dbc5d3d6110a3ff425eb620e620c97ff6251",
+      "src/compass_brief/chrys/tui/details.py": "9f874d030ddecf97ab1fc94c37a466f1690035353ad8214e60547cfa46d72b52",
+      "src/compass_brief/chrys/tui/feature.py": "09f6f57949f1dd1122dace263db3aabcfee924aa8f5f7f16d2e97c6e9015fb41",
+      "src/compass_brief/chrys/tui/panels.py": "008f3ee3fce8ed2cd4874276c320eadae75a94e678ac6ada91bd030984ba96cb",
+      "src/compass_brief/chrys/tui/presentation.py": "76295e06a4a018f7cd1799a8e0f2133f861857cbbb5514ff26fc354090b86235",
+      "src/compass_brief/chrys/tui/zones.py": "cea1135cf29158e51242daa5841d6a493f14e5cfa399e2bcc905ffc6608e1d56",
+      "src/compass_brief/claims/__init__.py": "aac7fc1a769ae8a6d824d4596463aea5b3057c8ede17bd3f2274016ad1b76ae1",
+      "src/compass_brief/claims/coverage.py": "fb3b6676ba964c184d3e42538f49b0dddf72d270aed929a2f4bbc6810c9c06c5",
+      "src/compass_brief/claims/inspection.py": "4a848c9ed24e86e494364008f83b078756d996c7506c1def339c65328a97ce78",
+      "src/compass_brief/claims/maintenance.py": "7a2f17077a532afdfc13f0a7ff368c1e7cfc10672db7108d5af593a7cf04c140",
+      "src/compass_brief/claims/models.py": "0e194072f9db25a7e9e415e9660723eb30fc64d7cb78f2711e0769279a04d0ff",
+      "src/compass_brief/claims/store.py": "384949708cdc14d80b9ad135ac190f9b777a752d78a7a3786bae8a8a43f8ce2d",
+      "src/compass_brief/conversation/__init__.py": "11bcf2fed6de2e15821248e88ecb017eb0776f03c26f0625b5773c2837dc0672",
+      "src/compass_brief/conversation/statements.py": "8af469872829ade7679bac92c6f0a34eaa9e74292014fc8515a2d3839dc378ae",
+      "src/compass_brief/events.py": "4135fd90f2080a94b6e2642f2f1797a3e99a456afc38cee45ce1691e31252398",
+      "src/compass_brief/evidence/__init__.py": "bc7ace37091931ea74de5201f31103a34ee2817bd93ea04620d0f0d25f053033",
+      "src/compass_brief/evidence/actions.py": "d2893294173365d2301f89350a38a308fc6a774a26221c1fa2a69536764439dd",
+      "src/compass_brief/evidence/models.py": "9a4da3102acb76da216d29714b3ca22c0ed33c101f229492a6d9bef2a49a952b",
+      "src/compass_brief/evidence/observation.py": "b628270f1db22dd23c68de9291c8e2b9f7f7436976e3a4fab8e3d55b545cb51c",
+      "src/compass_brief/evidence/semantics.py": "a66882c194c374e5573e2c470d8b22b7a65bef9d432e6b85c05541b8b30ecb25",
+      "src/compass_brief/evidence/tracker.py": "e7148b81f35ec5b9520be69aa7f1f121a7282c78b452696883f31da0f5987e59",
+      "src/compass_brief/icode/__init__.py": "3771811f09543c65184cd5ff57615a2a4e754bada6c09ad86a5a65b66d5b89e0",
+      "src/compass_brief/icode/clarification.py": "47884653fc0c9ec3723f824575fb7305743b27defaa85fc9306b557fd1a0369d",
+      "src/compass_brief/icode/pier.py": "acb6879214ed6687cb38ad7dcd8e77aaa2aa90439574d7411c778c9a47b4c3e7",
+      "src/compass_brief/icode/run.py": "c7150e5cce4f170d03b83ec6e82fdf64bb3ae96e4f0fc87e1f9fa6cc3517b8ae",
+      "src/compass_brief/intervention/__init__.py": "05f3d08035aa3a424b78b5c98472dd19806d8f54b7841fc82bcbdc8021a48277",
+      "src/compass_brief/intervention/maintenance.py": "ee896051e1639c88cb6ad311d5eb61aca133b0a933b49fc418999f3641278ca1",
+      "src/compass_brief/mini/__init__.py": "e3d4f51f6ea0e1b701b375dc25f4bcb304955618036e7923910ac23d17faa9ca",
+      "src/compass_brief/mini/agent.py": "c4555c482fa5a24b52c087e0b105d20f938472508372cc26d9b1941f2d935f27",
+      "src/compass_brief/mini/exploration.py": "16130c960fdf7d4a428164cf0f8c0d80df26cbf62164c77eae758c31ed5e64af",
+      "src/compass_brief/mini/inspect_cli.py": "12a839ff8050c8ba31285b8a8972005432cac7cdaacfcc212b407db6cbf15ded",
+      "src/compass_brief/mini/pier.py": "c4a84cf2ec8fdaef2e073dfa9d8516bb66f2064cd5ea064c97e6ca1b307df014",
+      "src/compass_brief/mini/presentation.py": "98ee574824ad6f850fa192adb803cd7b7b17b854284e0ef8abb4a175f410e587",
+      "src/compass_brief/mini/run.py": "f1e6b2ad17fc360e3d791ed130c59c7fe0001021124d131d83927dde28fa3ae3",
+      "src/compass_brief/mini/submission.py": "e857584e4a541c54fe505cbe9ffb478bcb9960b95cd9c40c9380c8d62de653d4",
+      "src/compass_brief/model_calls/__init__.py": "02bd18477edc41c6266d63260d8206aedcf1f4996e08f4f7b7a044ab4fe25f24",
+      "src/compass_brief/model_calls/policy.py": "e19860f24ff2df547a79c867e12ad6379de014313713f3bf0954d4faf85035b2",
+      "src/compass_brief/persistence/__init__.py": "c10994a8663b546b0256df26d6f9cf9c0c7db14493868b009ba6538165c21811",
+      "src/compass_brief/persistence/locations.py": "aa8bb2848d251550e7e96e3c66fecb9f49befbfe6835500c9d9731f94b3a8930",
+      "src/compass_brief/pi/__init__.py": "e664ea0d99db4c0bf9573a57718ab22a5b69a2543ac1958a42eec12cf2fc62ac",
+      "src/compass_brief/pi/brief_view.py": "2c64cb0776301bd79ea29aca01448343e3f53c9c57fc0c79e173aba3888f7565",
+      "src/compass_brief/pi/conversation_inputs.py": "13b71fb222a108f17c2214784da7684f4ccb5dfe11c889cb67d368b3c089fa8a",
+      "src/compass_brief/pi/online_core.py": "93a840c9bfb5fee44787711666a9a66a08bfe0b96d81c8fc48dd8c6cd6d24c12",
+      "src/compass_brief/ports.py": "8570a279df2998cf35ed8f2adbcd6a723f1909146bc6af471b9cf979555b5153",
+      "src/compass_brief/session.py": "e47914be14086cc2966e1d7174e5935581d82e1bdbf7f74135c1e5f5ed4ef0d8",
+      "src/compass_brief/state.py": "6f29596229b49a36c9038650cddbf1d3fc9fae73212acba9d10dd451d54fb769",
+      "src/compass_brief/task_contract/__init__.py": "edc6cf47ed79703ac0962a47ba268ee14842494e98544714ffdf29bafdeb417b",
+      "src/compass_brief/task_contract/extraction.py": "f3cf507bccfc0d94b0146ab98814e175b0c9889d15ae112d468f07b25d34b347",
+      "src/compass_brief/task_contract/models.py": "6004053e35432aec15f96aca9b2b0120e8630e9f7bb709891d48c4cdef355bf1",
+      "src/compass_brief/task_contract/tracker.py": "0a8d7073fa160bedfd40663d95d241273e5f3b56f5e77d873dc1fa13730602cc"
+    },
+    "original_archive_sha256": "62c304ae6315ffb1c977def04b77fb9c552ac75ceb533fd249c2b0180818d257"
+  },
+  "files": {
+    "__init__.py": {
+      "original": "src/compass_brief/__init__.py",
+      "original_sha256": "a055277a18f6aa915ad032f40d63dbc5d3d6110a3ff425eb620e620c97ff6251",
+      "sha256": "a055277a18f6aa915ad032f40d63dbc5d3d6110a3ff425eb620e620c97ff6251",
+      "original_ast_sha256": "9f5bdd01c3adea3cce8bd18f272fe44348b05d61734cc697c1e00a7259318c25"
+    },
+    "briefing/__init__.py": {
+      "original": "src/compass_brief/briefing/__init__.py",
+      "original_sha256": "408be375721c7eeec60f62fe10c66ed986bc87a0c9d420178254730fd4a1ffcb",
+      "sha256": "408be375721c7eeec60f62fe10c66ed986bc87a0c9d420178254730fd4a1ffcb",
+      "original_ast_sha256": "933e7fcc41c669d46e2d34f0c64c85d44a10d99b96f70350c715e410d9026056"
+    },
+    "briefing/delivery.py": {
+      "original": "src/compass_brief/briefing/delivery.py",
+      "original_sha256": "eae7ae05496c716d80ebde7e1bec7805b8397f08f38125c70bad50c5c1f4cff0",
+      "sha256": "eae7ae05496c716d80ebde7e1bec7805b8397f08f38125c70bad50c5c1f4cff0",
+      "original_ast_sha256": "4ef8a5dbc9bbbabc40d18ef2bc42befc7ce3f15d00bf243322712ac58309add3"
+    },
+    "briefing/evidence.py": {
+      "original": "src/compass_brief/briefing/evidence.py",
+      "original_sha256": "fff1b1711f483031f8bedb4778bddf71f79caec65f16b5c63f530cd33b7a3b22",
+      "sha256": "6510bd284a354c2e09a1e06a6c3225bc193c7ebddf711df880647007c6739912",
+      "original_ast_sha256": "e2a3756acfd4194f8226af88ee06419d29ceb1bec11c98856b4d13a4ae02b478",
+      "adapted_ast_sha256": "01dfbdf0ea05cc2af12e420dce1edae7be253f5d5345cc96a222048e099a9190",
+      "behavior_change": "2026-11-24: max_files=None renders every tracked file and read range for complete Briefs; finite legacy evidence-context callers retain their limits. 2026-11-24: default Brief and requirement display is complete without clipping; see behavior_changes for file-specific scope and explicit-budget compatibility."
+    },
+    "briefing/freshness.py": {
+      "original": "src/compass_brief/briefing/freshness.py",
+      "original_sha256": "95e40d3ce3fbf0958eb9ddcb17c444fe64af0193eb315e6043a7d7687f6bb8b9",
+      "sha256": "ae1216e1a4f11a08bf87f830ff6328377b16f01a7368b5cca8122ede56f45329",
+      "original_ast_sha256": "de8ff68a8ca9bdb12aea29c7cd5d3e36cb37129ae139671b3a903ca6ac80e2e0"
+    },
+    "briefing/notifications.py": {
+      "original": "src/compass_brief/briefing/notifications.py",
+      "original_sha256": "8b1333541f9378e8241b099c4950ba4501e38f23d24ee3ee51a76406308c46d0",
+      "sha256": "17849a1fc8a3dbe6c32300924c2e98e73afbc34ecae9b5bbd6f27c48b12260a8",
+      "original_ast_sha256": "2936dca054dbd19f03f16dfc97b82c1e09cac9974ad894c01597c035440849c0"
+    },
+    "briefing/policy.py": {
+      "original": "src/compass_brief/briefing/policy.py",
+      "original_sha256": "fa5fc088f5075a31518ec7285dc869e62df6aa3d80690b52cdb04056b1b4602a",
+      "sha256": "fc8ba811f9bc97932982c8386e4585647dc90a7327d51d98057618bf5a96fbac",
+      "original_ast_sha256": "41fe8a7466209e80e3948ad9742ddcfd5a1055306cbc238504998fc45c0890b6"
+    },
+    "briefing/render.py": {
+      "original": "src/compass_brief/briefing/render.py",
+      "original_sha256": "f649a0d9a4225d79c5eb077de3a11f89575f2ec53d630486ed1423945e8ab7a5",
+      "sha256": "d4d147abf208576765eb5963512e9ecfb264e3483af74e1cec8076078c05aad3",
+      "original_ast_sha256": "61628ac71436aa090dac28beac37531bba67486b1d0999d81ab2b230f3dad4fc",
+      "adapted_ast_sha256": "1989834a6b25ae0d976ea92c7e9bd4777c7d180b34013ff25313ab221c368444",
+      "behavior_change": "2026-11-24: render existing Goal symptom entries as reported background, not current verified behavior or requirements. Full Brief shows bounded excerpts and a Goal inspection pointer; compact Brief shows a count and pointer. Shared renderer change also applies to independent evaluation, affects Brief text/budget, and is not claimed behavior-equivalent to upstream. 2026-11-24: failed-check focus follows merged child provenance and retains the original failure scope across unrelated later passes. Rendering and priority change also applies to independent evaluation; explicit stale/superseded claims still retire through the existing protocol. 2026-11-24: default Brief rendering is unbounded and preserves full Goal/R/K, active claims, reference IDs, tensions, symptoms, verification focus and read coverage. Explicit finite budgets retain the legacy bounded mode. Applies to product and any evaluation callers using defaults; no equivalence or benchmark improvement claimed. 2026-11-24: default Brief and requirement display is complete without clipping; see behavior_changes for file-specific scope and explicit-budget compatibility."
+    },
+    "claims/__init__.py": {
+      "original": "src/compass_brief/claims/__init__.py",
+      "original_sha256": "aac7fc1a769ae8a6d824d4596463aea5b3057c8ede17bd3f2274016ad1b76ae1",
+      "sha256": "aac7fc1a769ae8a6d824d4596463aea5b3057c8ede17bd3f2274016ad1b76ae1",
+      "original_ast_sha256": "d1e6a205623b5208afe5249a11f0fc1bffcf83a14bc8d868240563292ef5d7a4"
+    },
+    "claims/coverage.py": {
+      "original": "src/compass_brief/claims/coverage.py",
+      "original_sha256": "fb3b6676ba964c184d3e42538f49b0dddf72d270aed929a2f4bbc6810c9c06c5",
+      "sha256": "733c8a0f110e1a090a05896eb5b57c0099dba492ab71e3dee1c00ea0bf5eb1fc",
+      "original_ast_sha256": "e4e9c246b263d99558052192f236210f02cac697cc0fa83965bc9389ae0384ea"
+    },
+    "claims/inspection.py": {
+      "original": "src/compass_brief/claims/inspection.py",
+      "original_sha256": "4a848c9ed24e86e494364008f83b078756d996c7506c1def339c65328a97ce78",
+      "sha256": "c794eeb85b4b9560f5bc6143366368549c991bbb711b12b66f41316fec44e311",
+      "original_ast_sha256": "e7a17a235237c36d551cc11c34502759b03b7cddf607fe0a2113637bc3967ea0",
+      "adapted_ast_sha256": "626cc663f985e7e405d376e2355344e148d86f1a35903bbcc628997f81b470ff",
+      "behavior_change": "2026-11-24: display the complete stored evidence excerpt in detail queries; evidence ingestion semantics unchanged. 2026-11-24: default Brief and requirement display is complete without clipping; see behavior_changes for file-specific scope and explicit-budget compatibility."
+    },
+    "claims/maintenance.py": {
+      "original": "src/compass_brief/claims/maintenance.py",
+      "original_sha256": "7a2f17077a532afdfc13f0a7ff368c1e7cfc10672db7108d5af593a7cf04c140",
+      "sha256": "a19aaa05198085df6c150539a4dfcdcf96aadb436af0d04fff9cd42fe9df4422",
+      "original_ast_sha256": "8e272403e31c43053776303e397ac52d060219f480a9bc31dd2a8ecc7577c74f",
+      "adapted_ast_sha256": "c5c9e8c400977de3d327bae245e2b3a0d4721ff44951b7a06d09a55eb437cf63",
+      "behavior_change": "2026-11-23: opt-in requirement reassessment with historical evidence. 2026-11-24: invalid current-contract conflict excerpts are discarded per row rather than rejecting the window; this validation change also affects independent evaluation. 2026-11-24: default Brief has no character budget and no automatic size/phase folding; explicit finite-budget evaluation callers retain folding. 2026-11-24: default Brief and requirement display is complete without clipping; see behavior_changes for file-specific scope and explicit-budget compatibility.",
+      "adaptation_note": "; 2026-11-23: repository fact/contract separation, CJK clause dedup, opt-in complete requirement reassessment and explicit extraction policy refresh."
+    },
+    "claims/models.py": {
+      "original": "src/compass_brief/claims/models.py",
+      "original_sha256": "0e194072f9db25a7e9e415e9660723eb30fc64d7cb78f2711e0769279a04d0ff",
+      "sha256": "0e194072f9db25a7e9e415e9660723eb30fc64d7cb78f2711e0769279a04d0ff",
+      "original_ast_sha256": "201fa004dd68084df8e9e22dde688422c38c8c1ddc762a4cb1e140c0c8f1b0f8"
+    },
+    "claims/store.py": {
+      "original": "src/compass_brief/claims/store.py",
+      "original_sha256": "384949708cdc14d80b9ad135ac190f9b777a752d78a7a3786bae8a8a43f8ce2d",
+      "sha256": "885b2aec605dcc77833f2ad231f8e3b27486854c7e07b4b655275517939b8b3f",
+      "original_ast_sha256": "908ca35f797ade378364b6afc21232823c4c7884aa4ac68d50e22af963254914",
+      "adapted_ast_sha256": "c7eff65939d816cd0c63a9547a5a40b204b19fbc6ab127e79f655d28f4fdf014"
+    },
+    "conversation/__init__.py": {
+      "original": "src/compass_brief/conversation/__init__.py",
+      "original_sha256": "11bcf2fed6de2e15821248e88ecb017eb0776f03c26f0625b5773c2837dc0672",
+      "sha256": "11bcf2fed6de2e15821248e88ecb017eb0776f03c26f0625b5773c2837dc0672",
+      "original_ast_sha256": "17ce00963e998edf361ef3e1fbf794c65bf072c74fe238fc0ad21788a1f08ffa"
+    },
+    "conversation/statements.py": {
+      "original": "src/compass_brief/conversation/statements.py",
+      "original_sha256": "8af469872829ade7679bac92c6f0a34eaa9e74292014fc8515a2d3839dc378ae",
+      "sha256": "8af469872829ade7679bac92c6f0a34eaa9e74292014fc8515a2d3839dc378ae",
+      "original_ast_sha256": "b004d144926b1c94d040a06b5904fd9d4ed474b9d457b9c29d38dc906536aef2"
+    },
+    "events.py": {
+      "original": "src/compass_brief/events.py",
+      "original_sha256": "4135fd90f2080a94b6e2642f2f1797a3e99a456afc38cee45ce1691e31252398",
+      "sha256": "f17efa85141cc569c63789c12dd1c94752be49ddc97a339182670114a3b1d809",
+      "original_ast_sha256": "3c1cea7866b4dc4debb46344f60a3a74ec5aada76290b7aa76900a1d77880069"
+    },
+    "evidence/__init__.py": {
+      "original": "src/compass_brief/evidence/__init__.py",
+      "original_sha256": "bc7ace37091931ea74de5201f31103a34ee2817bd93ea04620d0f0d25f053033",
+      "sha256": "bc7ace37091931ea74de5201f31103a34ee2817bd93ea04620d0f0d25f053033",
+      "original_ast_sha256": "cfc9dabfb0fca17f1206b7b2bd48be7507e42c00f5172457182a1b8b4368b735"
+    },
+    "evidence/actions.py": {
+      "original": "src/compass_brief/evidence/actions.py",
+      "original_sha256": "d2893294173365d2301f89350a38a308fc6a774a26221c1fa2a69536764439dd",
+      "sha256": "81437afe11a66be3a3f1aa60bd34e8f85c38dbb9919c3990872761e2911d5c45",
+      "original_ast_sha256": "a424b5414275d3113a9dc337fa10edbb118e791bb028a77cf695167355da79dc"
+    },
+    "evidence/models.py": {
+      "original": "src/compass_brief/evidence/models.py",
+      "original_sha256": "9a4da3102acb76da216d29714b3ca22c0ed33c101f229492a6d9bef2a49a952b",
+      "sha256": "5845fa40ca03df2c1119cd78340822a3318be7294d9073da6d069ddbcfcfa465",
+      "original_ast_sha256": "2ed5e8342c5d5e2e0d156d39fdce5d8e95830e329742767254897c03af9de27d"
+    },
+    "evidence/observation.py": {
+      "original": "src/compass_brief/evidence/observation.py",
+      "original_sha256": "b628270f1db22dd23c68de9291c8e2b9f7f7436976e3a4fab8e3d55b545cb51c",
+      "sha256": "20f1bef0064d3b74c30b3a22befeff1d435d59f5c392bcf42d88efcfc279762a",
+      "original_ast_sha256": "5e8f6858a0be73fe7aae7aa5614a7ca6ab8288bcee0131009475e0b2e4cccff8",
+      "adapted_ast_sha256": "0ed98ca01b62f6f333548beb62004a8cad0f3d4a5358370efd626c8def268e24",
+      "behavior_change": " 2026-11-24: populate missing action_input from actual supplied command/arguments at observation capture; preserve explicit input. Applies to both product and independent evaluation, with existing bounded evidence storage."
+    },
+    "evidence/semantics.py": {
+      "original": "src/compass_brief/evidence/semantics.py",
+      "original_sha256": "a66882c194c374e5573e2c470d8b22b7a65bef9d432e6b85c05541b8b30ecb25",
+      "sha256": "ebc3dedb93df0414da5c4698a56d8a5bcfe859eae85a5e127614a9c9f3ce5333",
+      "original_ast_sha256": "72e27e328503eead39f882a4c2ab1de53dcca4c95c2ade3774fc435c92fef131"
+    },
+    "evidence/tracker.py": {
+      "original": "src/compass_brief/evidence/tracker.py",
+      "original_sha256": "e7148b81f35ec5b9520be69aa7f1f121a7282c78b452696883f31da0f5987e59",
+      "sha256": "156f74fdf72aef545dd310095a87f80bdd07fe18911b0c46d3f5d22f1f5828da",
+      "original_ast_sha256": "9408df2539bcc135c6b808ec46cbc2a6ca523f63dc66bce2f1a20567b088f98a"
+    },
+    "gate/__init__.py": {
+      "original": "src/compass_brief/intervention/__init__.py",
+      "original_sha256": "05f3d08035aa3a424b78b5c98472dd19806d8f54b7841fc82bcbdc8021a48277",
+      "sha256": "05f3d08035aa3a424b78b5c98472dd19806d8f54b7841fc82bcbdc8021a48277",
+      "original_ast_sha256": "0692d9a5402c8acce3e07fbc67d376b11061acf17688224f0998b68c36bcddf4"
+    },
+    "gate/maintenance.py": {
+      "original": "src/compass_brief/intervention/maintenance.py",
+      "original_sha256": "ee896051e1639c88cb6ad311d5eb61aca133b0a933b49fc418999f3641278ca1",
+      "sha256": "dbe47aa089483ee88191266a9b058c65e8064b0e3486c9e5fdff9e7c2965034d",
+      "original_ast_sha256": "0bf8c0b81bb6a3763ab620071cb68003f64213d2e2b7f58258adfcbfe4fc3ea1"
+    },
+    "model_calls/__init__.py": {
+      "original": "src/compass_brief/model_calls/__init__.py",
+      "original_sha256": "02bd18477edc41c6266d63260d8206aedcf1f4996e08f4f7b7a044ab4fe25f24",
+      "sha256": "02bd18477edc41c6266d63260d8206aedcf1f4996e08f4f7b7a044ab4fe25f24",
+      "original_ast_sha256": "33929b19183560f9e747fc907be8f970ba53b78c689434b20bfa60187e7deb95"
+    },
+    "model_calls/policy.py": {
+      "original": "src/compass_brief/model_calls/policy.py",
+      "original_sha256": "e19860f24ff2df547a79c867e12ad6379de014313713f3bf0954d4faf85035b2",
+      "sha256": "3258946383a95a65082cb859cde4a7cac57994da59d9713259d35a3a91f6f4bf",
+      "original_ast_sha256": "1c9d76741e9dca6d7716554ab247d27ea49af3bc0597766543a535599b16e506"
+    },
+    "persistence/__init__.py": {
+      "original": "src/compass_brief/persistence/__init__.py",
+      "original_sha256": "c10994a8663b546b0256df26d6f9cf9c0c7db14493868b009ba6538165c21811",
+      "sha256": "c10994a8663b546b0256df26d6f9cf9c0c7db14493868b009ba6538165c21811",
+      "original_ast_sha256": "b3fd4a54878477b43e7c19709bc5d4a5f82bdc086df4df32ad1c5a7866fd9ca7"
+    },
+    "persistence/locations.py": {
+      "original": "src/compass_brief/persistence/locations.py",
+      "original_sha256": "aa8bb2848d251550e7e96e3c66fecb9f49befbfe6835500c9d9731f94b3a8930",
+      "sha256": "aa8bb2848d251550e7e96e3c66fecb9f49befbfe6835500c9d9731f94b3a8930",
+      "original_ast_sha256": "73ab6cf3dac82c37e1cb13012843ff9f5b51d24eef522b0f4d134cfd78ff77db"
+    },
+    "ports.py": {
+      "original": "src/compass_brief/ports.py",
+      "original_sha256": "8570a279df2998cf35ed8f2adbcd6a723f1909146bc6af471b9cf979555b5153",
+      "sha256": "8570a279df2998cf35ed8f2adbcd6a723f1909146bc6af471b9cf979555b5153",
+      "original_ast_sha256": "6b07b79824bb01121b77e5833965853ff429559ff1a14f85e8ac150c0e53c4a5"
+    },
+    "session.py": {
+      "original": "src/compass_brief/session.py",
+      "original_sha256": "e47914be14086cc2966e1d7174e5935581d82e1bdbf7f74135c1e5f5ed4ef0d8",
+      "sha256": "ad8a22d0995ff582c05a983e60381e7a9fe19b4994015a4cab2a38cd44b94d9e",
+      "original_ast_sha256": "af6c23c43e3963e07e57ecddf56c001c09d97df096515e99bc6e4a39f64c77e0",
+      "adapted_ast_sha256": "da0415e38d0d9760f64d3e0544334290316d3afb019208d7b9016d934a4c0e02",
+      "behavior_change": "2026-11-20: extraction deduplicates by (user text, repository context), including successful fallback recovery and checkpoint restoration. Other core behavior unchanged. Deduplication only skips extraction when Goal and behavioral Requirements still exist. 2026-11-23: opt-in reassess_requirements permits reassessment with historical evidence and no new delta; default False preserves evaluation behavior. 2026-11-24: default Brief and requirement display is complete without clipping; see behavior_changes for file-specific scope and explicit-budget compatibility.",
+      "adaptation_note": "; 2026-11-23: repository fact/contract separation, CJK clause dedup, opt-in complete requirement reassessment and explicit extraction policy refresh."
+    },
+    "state.py": {
+      "original": "src/compass_brief/state.py",
+      "original_sha256": "6f29596229b49a36c9038650cddbf1d3fc9fae73212acba9d10dd451d54fb769",
+      "sha256": "a9f71dc8ab362f4b9a12ce0daaf8f360185791d5750eb6bcf539afe10f3084d3",
+      "original_ast_sha256": "0da71cf241e2b0f81be89d65eebc8d2bc8fe8f7f2eeaacfc3d54ebcd0129ded7"
+    },
+    "task_contract/__init__.py": {
+      "original": "src/compass_brief/task_contract/__init__.py",
+      "original_sha256": "edc6cf47ed79703ac0962a47ba268ee14842494e98544714ffdf29bafdeb417b",
+      "sha256": "edc6cf47ed79703ac0962a47ba268ee14842494e98544714ffdf29bafdeb417b",
+      "original_ast_sha256": "29fa669df664a3bbf77a06528e1e4795be4b510df831c2de1eab73278f1f10c6"
+    },
+    "task_contract/extraction.py": {
+      "original": "src/compass_brief/task_contract/extraction.py",
+      "original_sha256": "f3cf507bccfc0d94b0146ab98814e175b0c9889d15ae112d468f07b25d34b347",
+      "sha256": "f3a56132095e0b22275f14b9d4b58acd314f163c662e1f3e02e20601d707a6b7",
+      "original_ast_sha256": "4871b526c91cc5403cca0522374c333ff8e456e8a248b0abc3effd925b886e73",
+      "adapted_ast_sha256": "f449398fe27d7b89bd44c0b49ea2c0cc6547ffc5cdf90c85a608fa6d8b426a90",
+      "adaptation_note": "Extraction prompts include multi-turn supersession, defect/obligation separation and repository provenance (also visible to evaluation). Policy 5 interactive post-processing only (user_messages present): preserve copied repository R/K and annotate literal sources; retain user-quoted and ambiguous clauses; move bounded affirmative defect reports into Goal symptom context without inventing obligations or reviving an empty contract. No extra extraction call is made by this post-processing. Evaluation without user_messages skips it.",
+      "behavior_change": "2026-11-24: remove character truncation of extracted goal, objective, symptom and reproduction text; requirement and constraint text remains complete. Shared extraction change also applies to evaluation. 2026-11-24: default Brief and requirement display is complete without clipping; see behavior_changes for file-specific scope and explicit-budget compatibility."
+    },
+    "task_contract/models.py": {
+      "original": "src/compass_brief/task_contract/models.py",
+      "original_sha256": "6004053e35432aec15f96aca9b2b0120e8630e9f7bb709891d48c4cdef355bf1",
+      "sha256": "6004053e35432aec15f96aca9b2b0120e8630e9f7bb709891d48c4cdef355bf1",
+      "original_ast_sha256": "5a1c548456e4901a84c2260e3b4c85376e12087b0704d5717e410721f51b51dd"
+    },
+    "task_contract/tracker.py": {
+      "original": "src/compass_brief/task_contract/tracker.py",
+      "original_sha256": "0a8d7073fa160bedfd40663d95d241273e5f3b56f5e77d873dc1fa13730602cc",
+      "sha256": "aac629046f06bb51840fb731b5a979a8fa822dec3a511d43f3673e2d7a91afef",
+      "original_ast_sha256": "338af2cb9c8c4f9b7b8d768d0fe27328eb6752b46386d12d54d2e9578e9f5fe8"
+    }
+  },
+  "excluded_original_files": [
+    "pyproject.toml",
+    "src/compass_brief/chrys/__init__.py",
+    "src/compass_brief/chrys/artifacts.py",
+    "src/compass_brief/chrys/delivery.py",
+    "src/compass_brief/chrys/engine.py",
+    "src/compass_brief/chrys/event_bridge.py",
+    "src/compass_brief/chrys/events.py",
+    "src/compass_brief/chrys/evidence.py",
+    "src/compass_brief/chrys/feature.py",
+    "src/compass_brief/chrys/model.py",
+    "src/compass_brief/chrys/options.py",
+    "src/compass_brief/chrys/storage.py",
+    "src/compass_brief/chrys/task_input.py",
+    "src/compass_brief/chrys/tools.py",
+    "src/compass_brief/chrys/tui/__init__.py",
+    "src/compass_brief/chrys/tui/details.py",
+    "src/compass_brief/chrys/tui/feature.py",
+    "src/compass_brief/chrys/tui/panels.py",
+    "src/compass_brief/chrys/tui/presentation.py",
+    "src/compass_brief/chrys/tui/zones.py",
+    "src/compass_brief/icode/__init__.py",
+    "src/compass_brief/icode/clarification.py",
+    "src/compass_brief/icode/pier.py",
+    "src/compass_brief/icode/run.py",
+    "src/compass_brief/mini/__init__.py",
+    "src/compass_brief/mini/agent.py",
+    "src/compass_brief/mini/exploration.py",
+    "src/compass_brief/mini/inspect_cli.py",
+    "src/compass_brief/mini/pier.py",
+    "src/compass_brief/mini/presentation.py",
+    "src/compass_brief/mini/run.py",
+    "src/compass_brief/mini/submission.py",
+    "src/compass_brief/pi/__init__.py",
+    "src/compass_brief/pi/brief_view.py",
+    "src/compass_brief/pi/conversation_inputs.py",
+    "src/compass_brief/pi/online_core.py"
+  ],
+  "submission_sha256": {
+    "SUBMISSION_RULES": "5b561be693f3d60cc6610b1b6a9f6d2c416db237551b116f064213a48a77af3a",
+    "SUBMISSION_CHECK": "d6bc1838a83d1a9b8601c59c43c6ae50b477f0145e55641dfa3156be5c77a19c"
+  },
+  "migration": "Import namespace/formatting migration plus recorded behavior changes. Original source hashes (original_sha256) and submission strings remain preserved for comparison; sha256 is the current file.",
+  "migration_io_adjustments": {
+    "evidence/observation.py": "_git_dirty_paths: git status receives DEVNULL stdin instead of inheriting parent stdin; command, output parsing and evidence policy unchanged."
+  },
+  "layout_change": "2026-11-22: business modules flattened, intervention renamed gate, evaluation-only workflow separated; algorithm bodies unchanged by this layout migration.",
+  "behavior_changes": {
+    "session.py": "Requirement extraction is deduplicated by (user text, repository context); revised contracts receive ordered user messages. Default agent delivery uses an unbounded full Brief instead of a 6000-character projection.",
+    "task_contract/extraction.py": "2026-11-24: remove character truncation of extracted goal, objective, symptom and reproduction text; requirement and constraint text remains complete. Shared extraction change also applies to evaluation. Preserve full Goal/objective/symptom/reproduction text and all fallback requirement entries.",
+    "claims/maintenance.py": "2026-11-23: opt-in requirement reassessment with historical evidence. 2026-11-24: invalid current-contract conflict excerpts are discarded per row rather than rejecting the window; this validation change also affects independent evaluation. 2026-11-24: default Brief has no character budget and no automatic size/phase folding; explicit finite-budget evaluation callers retain folding. Unbounded default does not trigger size/count/phase Claim folding; explicit finite budgets retain folding.",
+    "claims/store.py": "Replacing the task contract invalidates R/K coverage and R/K conflict notes.",
+    "briefing/render.py": "2026-11-24: render existing Goal symptom entries as reported background, not current verified behavior or requirements. Full Brief shows bounded excerpts and a Goal inspection pointer; compact Brief shows a count and pointer. Shared renderer change also applies to independent evaluation, affects Brief text/budget, and is not claimed behavior-equivalent to upstream. 2026-11-24: failed-check focus follows merged child provenance and retains the original failure scope across unrelated later passes. Rendering and priority change also applies to independent evaluation; explicit stale/superseded claims still retire through the existing protocol. 2026-11-24: default Brief rendering is unbounded and preserves full Goal/R/K, active claims, reference IDs, tensions, symptoms, verification focus and read coverage. Explicit finite budgets retain the legacy bounded mode. Applies to product and any evaluation callers using defaults; no equivalence or benchmark improvement claimed. Unbounded default renders complete contract and active Claim text, references, symptoms, tensions, verification focus and read coverage. Explicit finite budgets retain the legacy evaluation path.",
+    "evidence/observation.py": " 2026-11-24: populate missing action_input from actual supplied command/arguments at observation capture; preserve explicit input. Applies to both product and independent evaluation, with existing bounded evidence storage.",
+    "briefing/evidence.py": "2026-11-24: max_files=None renders every tracked file and read range for complete Briefs; finite legacy evidence-context callers retain their limits. An explicit None file limit renders all recorded files and read ranges.",
+    "claims/inspection.py": "2026-11-24: display the complete stored evidence excerpt in detail queries; evidence ingestion semantics unchanged. Detail queries return the full stored evidence excerpt."
+  }
+}

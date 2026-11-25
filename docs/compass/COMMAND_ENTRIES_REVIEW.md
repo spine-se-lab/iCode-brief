@@ -1,0 +1,7 @@
+# Parallel Compass command entries — 2026-11-24
+
+`/compass` retains requirement/Brief maintenance. `/compass status` retains read-only status/history. Both appear at the same top-level autocomplete list; selecting them executes immediately. No `/compass update` entry is introduced. Maintain inside the status dialog dispatches the no-argument maintenance operation. Maintenance remains blocked while an Agent or maintenance operation is busy.
+
+Changes are in the Compass command adapter plus its existing optional registration seam in `src/chrys/app/tui/screens/main/commands.py`. No generic completion-parser changes or new dependencies. Prior command tests were updated for the changed spelling; only the newly added `test_flat_command_entries.py` was executed: **2 passed**. This exercises the native app, same-level suggestions, Enter/Down selection, fully typed status, no extra Agent turn, and busy/maintenance protection. Changed Python files pass Ruff checks/formatting. Restart the development app to load the new definitions; no installation or push was performed.
+
+The supplied revision-12 screenshot was separately checked against session `55a3f2bb0fa3`: policy 2 captured all four user turns and the correct latest test-only goal. R1 nevertheless contains README's historical "The first page currently skips items" alongside the desired one-based numbering. This is extraction/contradiction interpretation, not missing user capture; it is **not fixed or validated by this command change**.

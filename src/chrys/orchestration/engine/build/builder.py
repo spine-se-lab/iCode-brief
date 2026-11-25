@@ -852,6 +852,15 @@ async def build_agent(
 
         # Capture tool/skill names
         await _progress(AGENT_LOAD_PHASE_AGENT, "Finalizing agent", status=AGENT_LOAD_STATUS_RUNNING)
+        if "compass" in profile.extensions:
+            from compass.adapters.icode.host import prepare as prepare_compass
+
+            context_providers.append(
+                await prepare_compass(
+                    active_profile, extensions, prepared, on_side_call_usage, lambda: executor.inputs.origin
+                )
+            )
+
         tool_names = [t.name for t in tools]
         tool_kinds = {t.name: k for t in tools if (k := get_tool_kind(t))}
         context_tool_names = ctx.context_mgmt_provider.tool_names if ctx.context_mgmt_provider is not None else []

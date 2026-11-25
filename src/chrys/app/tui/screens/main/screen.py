@@ -924,6 +924,19 @@ class MainScreen(RightClickScreenCopyMixin, Screen):
                 start_index=start_index,
             ),
             warn=self._warn_slash_command,
+            compass_handler=self.action_compass,
+        )
+
+    def action_compass(self, arg: str) -> None:
+        from compass.adapters.icode.tui.command import dispatch
+
+        provider = self._services.engine_provider
+        dispatch(
+            self.app,
+            arg,
+            engine=provider() if provider is not None else None,
+            session_id=self.chat_session_id,
+            busy=self._state.run.agent_running or self._state.run.agent_loading or self._services.execution_busy(),
         )
 
     def action_btw(self, question: str) -> None:

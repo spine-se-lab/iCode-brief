@@ -175,6 +175,8 @@ def test_manual_pages_render_english_byte_identically_and_translate_at_display(
         "  /approval     - Switch approval mode: manual → auto → bypass\n"
         "  /models       - Configure model provider and settings\n"
         "  /buddy        - Hatch, pet and look after your buddy\n"
+        "  /compass      - Update task requirements and Brief\n"
+        "  /compass status - View Compass status and Brief history\n"
         "  /agents       - Manage agent configs\n"
         "  /reload       - Reload settings, profiles, memory, skills, hooks, MCP servers, themes and prompt shortcuts\n"
         "  /runtime      - Show active model, tools, skills, and files\n"

@@ -24,7 +24,12 @@ from tests.app.tui.screens._agent_config_support import (
     open_agent_config,
     registry_with,
 )
-from tests.support.extensions import EXAMPLE_EXTENSION_ID, install_distribution_extension, install_file_extension
+from tests.support.extensions import (
+    EXAMPLE_EXTENSION_ID,
+    ignore_installed_distribution_extensions,
+    install_distribution_extension,
+    install_file_extension,
+)
 from tests.support.tui_helpers import WidgetApp
 from tests.support.waiting import wait_for
 
@@ -37,6 +42,12 @@ if TYPE_CHECKING:
 # As in test_agent_config_panels.py: a first panel mount can be slow, and the
 # waits below keep their own 45 s ceiling so a stall fails cleanly first.
 pytestmark = [pytest.mark.timeout(120)]
+
+
+@pytest.fixture(autouse=True)
+def isolated_extension_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    ignore_installed_distribution_extensions(monkeypatch)
+
 
 _EXPLODING = '"""Continuous integration status."""\nraise SystemExit("ran while listing")\n'
 

@@ -8,7 +8,12 @@ import sys
 from typing import TYPE_CHECKING
 
 from chrys.service import extensions
-from tests.support.extensions import EXAMPLE_EXTENSION_ID, install_distribution_extension, install_file_extension
+from tests.support.extensions import (
+    EXAMPLE_EXTENSION_ID,
+    ignore_installed_distribution_extensions,
+    install_distribution_extension,
+    install_file_extension,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,6 +24,7 @@ _EXPLODING = '"""Would break iCode if it ran."""\nraise SystemExit("ran at disco
 
 
 def test_file_extensions_are_found_by_name_with_their_docstring_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    ignore_installed_distribution_extensions(monkeypatch)
     module = install_file_extension(monkeypatch)
     package = install_file_extension(monkeypatch, "acme_folder", package=True)
     catalog = extensions.discover_extensions()
@@ -61,6 +67,7 @@ def test_finding_extensions_imports_none_of_them(monkeypatch: pytest.MonkeyPatch
 def test_entries_that_are_not_extensions_are_ignored_and_bad_ids_are_skipped(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
+    ignore_installed_distribution_extensions(monkeypatch)
     extensions_dir = install_file_extension(monkeypatch).parent
     for name in ("_private.py", ".hidden.py", "notes.txt", "Bad-Id.py", "todo.py", "broken.py"):
         (extensions_dir / name).write_text("x = (" if name == "broken.py" else "", encoding="utf-8")
